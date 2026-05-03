@@ -1,0 +1,27 @@
+﻿cargo :    Compiling pdf-tools v0.1.0 
+(F:\Desktop-Apps\pdf-tools-project\src-tauri)
+At line:1 char:1
++ cargo build 2>&1 | Out-File -Encoding utf8 
+out.txt
++ ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   
+    Compiling pd...ject\src-tauri):String) [],  
+   RemoteException
+    + FullyQualifiedErrorId : NativeCommandErro 
+   r
+ 
+error: proc macro panicked
+ --> src\main.rs:8:14
+  |
+8 |         .run(tauri::generate_context!())
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: message: failed to decode icon F:\Desk
+top-Apps\pdf-tools-project\src-tauri\icons/icon.
+ico: Malformed PNG data: CRC error: expected 
+0x0 have 0x89dbeaf0 while decoding ChunkType { 
+type: IDAT, critical: true, private: false, 
+reserved: false, safecopy: false } chunk.
+
+error: could not compile `pdf-tools` (bin 
+"pdf-tools") due to 1 previous error

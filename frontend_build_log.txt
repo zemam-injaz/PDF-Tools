@@ -1,0 +1,7 @@
+﻿
+> pdf-tools@0.1.0 build
+> tsc -b && vite build
+
+src/components/tools/CommentsTool.tsx(1,31): error TS6133: 'useRef' is declared but its value is never read.
+src/components/tools/PDFExtractImagesTool.tsx(5,1): error TS6133: 'getDefaultOutputPath' is declared but its value is never read.
+src/components/tools/PDFToImagesTool.tsx(3,78): error TS6133: 'FileType' is declared but its value is never read.

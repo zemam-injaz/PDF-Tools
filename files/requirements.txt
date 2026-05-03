@@ -1,0 +1,72 @@
+# requirements.txt
+# Python dependencies for the PDF→DOCX/TXT converter feature
+
+google-auth>=2.29.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+google-api-python-client>=2.120.0
+pdf2image>=1.17.0
+python-docx>=1.1.0
+Pillow>=10.3.0
+Flask>=3.0.0
+flask-cors>=4.0.0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SETUP GUIDE
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# ① SYSTEM DEPENDENCY — poppler-utils (for pdf2image)
+#
+#   Ubuntu/Debian:  sudo apt install poppler-utils
+#   macOS:          brew install poppler
+#   Windows:        choco install poppler
+#                   OR download from https://github.com/oschwartz10612/poppler-windows
+#                   and add the bin/ folder to PATH
+#
+# ② GOOGLE CLOUD SETUP
+#
+#   a. Go to https://console.cloud.google.com
+#   b. Create a new project (or use an existing one)
+#   c. Enable these APIs:
+#        • Google Drive API
+#        • Google Docs API (for OCR export)
+#        • People API  (to fetch user email — optional)
+#   d. Go to APIs & Services → Credentials → Create Credentials
+#      → OAuth 2.0 Client ID → Desktop app
+#   e. Download the JSON file and save it as:
+#        python/client_secrets.json
+#      (next to server.py and converter.py)
+#   f. Go to OAuth consent screen → add your Google account as a Test User
+#      (while the app is in "Testing" mode)
+#
+# ③ INSTALL PYTHON DEPS
+#
+#   pip install -r requirements.txt
+#
+# ④ FIRST RUN
+#
+#   python server.py
+#   → On first launch a browser window opens for Google sign-in.
+#   → After sign-in the token is saved to ~/.tahweel_token.json
+#   → Subsequent runs reuse the saved token (no browser needed).
+#
+# ⑤ TAURI INTEGRATION
+#
+#   • Copy converter.rs into src-tauri/src/
+#   • Merge main_excerpt.rs into src-tauri/src/main.rs
+#   • Add reqwest + serde to Cargo.toml
+#   • Bundle the python/ folder as a Tauri resource
+#   • Register all commands in tauri::generate_handler![]
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# HOW THE CONVERSION WORKS (same as tahweel)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+#   PDF → (pdf2image) → per-page PNG images
+#        → (Google Drive API) → upload as Google Doc with OCR flag
+#        → export as DOCX bytes + TXT bytes
+#        → merge all pages → write final files
+#        → delete temp Drive files
+#
+# The OCR is done entirely inside Google's servers (same quality as Google
+# Docs OCR, which is what tahweel uses under the hood).

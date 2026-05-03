@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+pymupdf
+filelock
+tahweel==0.1.0
+google-auth-oauthlib
+google-api-python-client
+pdf2image
