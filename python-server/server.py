@@ -212,6 +212,11 @@ class BurnAnnotationsRequest(BaseModel):
     annotations: List[Dict[str, Any]]
 
 
+# Chapter Weight Analysis operations
+class ChapterWeightScanRequest(BaseModel):
+    directory: str
+    recursive: bool = True
+
 # PDF Progress/Activity Tracking operations
 class ScanDirectoryRequest(BaseModel):
     directory: str
@@ -439,6 +444,79 @@ def extract_bookmarks(request: BookmarkExtractRequest):
     try:
         result = BookmarkService.extract_bookmarks(request.pdf_path)
         return {"status": "success", "data": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/chapter-weight/scan-folder")
+def scan_pdf_folder(request: ChapterWeightScanRequest):
+    """Scan a directory for PDF files and get their page counts"""
+    import fitz
+    try:
+        root = request.directory
+        if not os.path.isdir(root):
+            raise HTTPException(status_code=404, detail="Directory not found")
+
+        def flatten_files(node):
+            flat = []
+            for c in node.get("children", []):
+                if c["type"] == "file":
+                    flat.append(c)
+                flat.extend(flatten_files(c))
+            return flat
+
+        def build_tree(current_path, is_recursive):
+            entries = []
+            try:
+                items = sorted(os.listdir(current_path))
+            except PermissionError:
+                return entries
+
+            for item in items:
+                full_path = os.path.join(current_path, item)
+                if os.path.isfile(full_path) and item.lower().endswith('.pdf'):
+                    try:
+                        doc = fitz.open(full_path)
+                        page_count = doc.page_count
+                        doc.close()
+                    except Exception:
+                        page_count = 0
+                    entries.append({
+                        "name": item,
+                        "path": full_path,
+                        "type": "file",
+                        "page_count": page_count,
+                        "children": []
+                    })
+                elif os.path.isdir(full_path) and is_recursive:
+                    children = build_tree(full_path, is_recursive)
+                    if children:
+                        flat = flatten_files({"children": children})
+                        total_pages = sum(f["page_count"] for f in flat)
+                        entries.append({
+                            "name": item,
+                            "path": full_path,
+                            "type": "folder",
+                            "page_count": total_pages,
+                            "children": children
+                        })
+            return entries
+
+        tree = build_tree(root, request.recursive)
+        flat_all = flatten_files({"children": tree})
+        total_pages = sum(f["page_count"] for f in flat_all)
+        total_files = len(flat_all)
+
+        return {
+            "status": "success",
+            "data": {
+                "root": os.path.basename(root),
+                "tree": tree,
+                "total_pages": total_pages,
+                "total_files": total_files
+            }
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
