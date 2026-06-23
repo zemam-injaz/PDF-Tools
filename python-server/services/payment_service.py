@@ -1,5 +1,6 @@
 import requests
 import json
+import os
 from datetime import datetime, timedelta
 from services.subscription_service import subscription_service
 from models.subscription import SubscriptionStatus, PlanType
@@ -19,7 +20,8 @@ class PaymentService:
         3. Payment Key request
         4. Return iframe URL
         """
-        mock_payment_url = f"http://localhost:8002/api/payment/mock-gateway?user_id={user_id}&plan={plan_id}"
+        port = os.environ.get("PORT", "8002")
+        mock_payment_url = f"http://localhost:{port}/api/payment/mock-gateway?user_id={user_id}&plan={plan_id}"
         
         return {
             "payment_url": mock_payment_url,

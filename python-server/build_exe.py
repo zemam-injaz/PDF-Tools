@@ -52,6 +52,7 @@ def build_exe():
         "--clean",             # Clean cache before building
         "--name", "pdf_server", # Output name
         "--add-data", f"services{os.pathsep}services",  # Include services folder
+        "--add-data", f"client_secrets.json{os.pathsep}.",  # Include Google API credentials in bundle root
         "--hidden-import", "uvicorn.logging",
         "--hidden-import", "uvicorn.loops",
         "--hidden-import", "uvicorn.loops.auto",

@@ -217,13 +217,14 @@ class PageService:
                                       start_at=insert_pos + i)
 
             target_doc.save(output_path)
+            total_target_pages = target_doc.page_count
             target_doc.close()
             source_doc.close()
             
             return {
                 "pages_inserted": len(source_indices),
                 "insert_position": insert_pos,
-                "total_pages": target_doc.page_count + len(source_indices)
+                "total_pages": total_target_pages
             }
         except Exception as e:
             raise Exception(f"Insert pages failed: {str(e)}")

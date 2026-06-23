@@ -30,7 +30,7 @@ export const PDFExtractImagesTool: React.FC = () => {
     const res = await api.extractImages(inputPath, outputDir);
     setLoading(false);
     if (res.success) {
-      setStatus({ type: 'success', message: `تم استخراج ${res.data?.files.length} صورة بنجاح!` });
+      setStatus({ type: 'success', message: `تم استخراج ${res.data?.files?.length ?? 0} صورة بنجاح!` });
       setInputPath('');
     } else {
       setStatus({ type: 'error', message: res.error || 'حدث خطأ' });

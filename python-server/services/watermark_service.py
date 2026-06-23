@@ -46,9 +46,8 @@ class WatermarkService:
             pages: 'all' or comma-separated page numbers
         """
         try:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
             doc = fitz.open(pdf_path)
-
-            # Parse color from hex
             color = color.lstrip('#')
             r = int(color[0:2], 16) / 255
             g = int(color[2:4], 16) / 255
@@ -78,15 +77,27 @@ class WatermarkService:
                     x = rect.width * pos_ratios[0]
                     y = rect.height * pos_ratios[1]
 
-                    # Create text with rotation
-                    page.insert_text(
-                        (x, y),
-                        text,
-                        fontsize=font_size,
-                        color=(r, g, b),
-                        rotate=rotation,
-                        overlay=True,
-                    )
+                    # Create text with rotation. PyMuPDF insert_text only allows multiples of 90 for rotate.
+                    # For arbitrary angles, we use matrix morphing.
+                    if rotation % 90 == 0:
+                        page.insert_text(
+                            (x, y),
+                            text,
+                            fontsize=font_size,
+                            color=(r, g, b),
+                            rotate=rotation,
+                            overlay=True,
+                        )
+                    else:
+                        m = fitz.Matrix(rotation)
+                        page.insert_text(
+                            (x, y),
+                            text,
+                            fontsize=font_size,
+                            color=(r, g, b),
+                            morph=(fitz.Point(x, y), m),
+                            overlay=True,
+                        )
                     watermarked += 1
 
             doc.save(output_path)
@@ -116,9 +127,8 @@ class WatermarkService:
             pages: 'all' or page numbers
         """
         try:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
             doc = fitz.open(pdf_path)
-            
-            # Read image dimensions
             img_doc = fitz.open(image_path)
             if len(img_doc) > 0:
                 img_rect = img_doc[0].rect
@@ -167,7 +177,8 @@ class WatermarkService:
                          aggressive: bool = False,
                          target_updf: bool = True,
                          target_urls: bool = True,
-                         remove_corner_images: bool = True) -> Dict[str, Any]:
+                         remove_corner_images: bool = True,
+                         keywords: Optional[List[str]] = None) -> Dict[str, Any]:
         """
         Enhanced watermark removal using multiple detection methods.
         
@@ -178,16 +189,20 @@ class WatermarkService:
             target_updf: Target UPDF and similar watermarks
             target_urls: Remove URL-like text
             remove_corner_images: Remove small images in corners
+            keywords: Optional list of additional custom keywords to clean
         """
         try:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
             doc = fitz.open(pdf_path)
             removed_count = 0
             details = []
 
             # Build keyword list
-            keywords = list(WatermarkService.WATERMARK_KEYWORDS)
+            active_keywords = list(WatermarkService.WATERMARK_KEYWORDS)
+            if keywords:
+                active_keywords.extend([kw.lower() for kw in keywords])
             if target_urls:
-                keywords.extend(["www.", ".com", ".net", ".org", "http://", "https://"])
+                active_keywords.extend(["www.", ".com", ".net", ".org", "http://", "https://"])
 
             for page_num in range(doc.page_count):
                 page = doc[page_num]
@@ -242,7 +257,7 @@ class WatermarkService:
                                 font_size = span.get("size", 12)
 
                                 # Check if matches watermark patterns
-                                is_watermark = any(kw in text for kw in keywords)
+                                is_watermark = any(kw in text for kw in active_keywords)
                                 is_small_url = target_urls and len(text) < 50 and ("www." in text or ".com" in text)
 
                                 # In aggressive mode, also remove small isolated text
@@ -264,13 +279,14 @@ class WatermarkService:
                 removed_count += page_removed
 
             # Clean and optimize output
+            page_count = doc.page_count
             doc.save(output_path, garbage=4, deflate=True, clean=True)
             doc.close()
 
             return {
                 "items_removed": removed_count,
                 "aggressive_mode": aggressive,
-                "pages_processed": doc.page_count,
+                "pages_processed": page_count,
                 "details": details if details else None
             }
         except Exception as e:

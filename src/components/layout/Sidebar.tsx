@@ -2,12 +2,12 @@ import React from 'react';
 import { 
   FileText, Menu, LayoutDashboard, Files, Split, Minimize2, Image, 
   Type, BookOpen, Layers, Stamp, Shield, Library, MessageSquare, 
-  BarChart3, Zap, Crown, AlertCircle, Clock
+  BarChart3, Zap, Crown, AlertCircle, Clock, RotateCw, Trash2, FileOutput
 } from 'lucide-react';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { PricingPage } from '../pricing/PricingPage';
 
-export type Tool = 'merge' | 'split' | 'compress' | 'extract' | 'text' | 'bookmark' | 'pages' | 'watermark' | 'security' | 'library' | 'comments' | 'chapter-weight' | 'reading-speed' | 'images-to-pdf' | 'pdf-to-images' | 'metadata' | 'tahweel' | 'privacy' | 'terms' | null;
+export type Tool = 'merge' | 'split' | 'compress' | 'extract' | 'text' | 'bookmark' | 'rotate' | 'delete' | 'extract-pages' | 'watermark' | 'security' | 'library' | 'comments' | 'chapter-weight' | 'reading-speed' | 'images-to-pdf' | 'pdf-to-images' | 'metadata' | 'tahweel' | 'privacy' | 'terms' | null;
 
 interface SidebarProps {
   activeTool: Tool;
@@ -38,7 +38,9 @@ const navItems: NavItem[] = [
     { id: 'compress', label: 'ضغط ملف', icon: Minimize2, section: 'main' },
     { id: 'extract', label: 'استخراج الصور', icon: Image, section: 'main' },
   { id: 'text', label: 'استخراج النص', icon: Type, section: 'main' },
-    { id: 'pages', label: 'عمليات الصفحات', icon: Layers, section: 'main' },
+    { id: 'rotate', label: 'تدوير الصفحات', icon: RotateCw, section: 'main' },
+    { id: 'delete', label: 'حذف صفحات', icon: Trash2, section: 'main' },
+    { id: 'extract-pages', label: 'استخراج صفحات', icon: FileOutput, section: 'main' },
     { id: 'watermark', label: 'علامة مائية', icon: Stamp, section: 'main' },
     { id: 'security', label: 'إزالة الحماية', icon: Shield, section: 'main' },
   { id: 'images-to-pdf', label: 'صور إلى PDF', icon: Image, section: 'main' },

@@ -104,6 +104,8 @@ export const PDFSplitTool: React.FC = () => {
   const [showSmartMode, setShowSmartMode] = useState(false);
   const [thumbnails, setThumbnails] = useState<Record<number, string>>({});
   const [loadingThumbnails, setLoadingThumbnails] = useState<Record<number, boolean>>({});
+  // Ref-based in-flight tracker to prevent duplicate thumbnail fetches (stale-closure safe)
+  const thumbnailsInFlight = useRef<Set<number>>(new Set());
   const [selectedSplits, setSelectedSplits] = useState<number[]>([]);
   const [searchPage, setSearchPage] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -170,26 +172,25 @@ export const PDFSplitTool: React.FC = () => {
   const loadThumbnail = useCallback(async (page: number) => {
     if (!inputPath) return;
 
-    setLoadingThumbnails(prev => {
-        if (prev[page] || thumbnails[page]) return prev;
-        
-        (async () => {
-            try {
-              // Adjust DPI based on zoom level for better readability
-              const dpi = zoomLevel === 1 ? 72 : (zoomLevel === 2 ? 100 : 150);
-              const res = await api.renderPage(inputPath, page, dpi);
-              if (res.success && res.data?.data?.image) {
-                setThumbnails(curr => ({ ...curr, [page]: res.data!.data.image }));
-              }
-            } catch (e) {
-              console.error(`Failed to load thumbnail for page ${page}:`, e);
-            } finally {
-              setLoadingThumbnails(curr => ({ ...curr, [page]: false }));
-            }
-        })();
+    // Guard: skip if already fetched or currently in-flight (ref is always current)
+    if (thumbnails[page] || thumbnailsInFlight.current.has(page)) return;
 
-        return { ...prev, [page]: true };
-    });
+    thumbnailsInFlight.current.add(page);
+    setLoadingThumbnails(prev => ({ ...prev, [page]: true }));
+
+    try {
+      // Adjust DPI based on zoom level for better readability
+      const dpi = zoomLevel === 1 ? 72 : (zoomLevel === 2 ? 100 : 150);
+      const res = await api.renderPage(inputPath, page, dpi);
+      if (res.success && res.data?.data?.image) {
+        setThumbnails(curr => ({ ...curr, [page]: res.data!.data.image }));
+      }
+    } catch (e) {
+      console.error(`Failed to load thumbnail for page ${page}:`, e);
+    } finally {
+      thumbnailsInFlight.current.delete(page);
+      setLoadingThumbnails(curr => ({ ...curr, [page]: false }));
+    }
   }, [inputPath, thumbnails, zoomLevel]);
 
   // If zoom level changes, we might want to reload thumbnails with higher DPI

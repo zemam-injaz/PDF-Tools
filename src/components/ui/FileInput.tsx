@@ -1,5 +1,5 @@
-import { useRef } from 'react';
-import { FolderOpen, File as FileIcon, X, UploadCloud } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { FolderOpen, File as FileIcon, X, UploadCloud, AlertTriangle } from 'lucide-react';
 import { open, save } from '@tauri-apps/plugin-dialog';
 
 interface FileInputProps {
@@ -11,6 +11,8 @@ interface FileInputProps {
   isSave?: boolean;
   label?: string;
   filterName?: string;
+  /** Warn user if selected file exceeds this size in MB (browser fallback only) */
+  maxSizeMB?: number;
 }
 
 export const FileInput: React.FC<FileInputProps> = ({
@@ -21,11 +23,14 @@ export const FileInput: React.FC<FileInputProps> = ({
   isDirectory = false,
   isSave = false,
   label,
-  filterName
+  filterName,
+  maxSizeMB
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [sizeWarning, setSizeWarning] = useState<string | null>(null);
 
   const handleBrowseClick = async () => {
+    setSizeWarning(null);
     // Check if running in Tauri environment
     const isTauri = !!(window as any).__TAURI__ || !!(window as any).__TAURI_INTERNALS__;
 
@@ -67,6 +72,15 @@ export const FileInput: React.FC<FileInputProps> = ({
     const files = e.target.files;
     if (files && files.length > 0) {
       const file = files[0];
+
+      // Size validation (only available via HTML input — Tauri dialog gives path only)
+      if (maxSizeMB && file.size > maxSizeMB * 1024 * 1024) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        setSizeWarning(`حجم الملف (${sizeMB} MB) كبير — قد تستغرق العملية وقتاً طويلاً.`);
+      } else {
+        setSizeWarning(null);
+      }
+
       const path = isDirectory 
         ? (file as any).webkitRelativePath?.split('/')[0] || file.name
         : file.name;
@@ -111,6 +125,12 @@ export const FileInput: React.FC<FileInputProps> = ({
           {...(isDirectory ? { webkitdirectory: '', directory: '' } as any : {})}
         />
       </div>
+      {sizeWarning && (
+        <div className="mt-1.5 flex items-center gap-1.5 text-amber-700 text-xs font-medium">
+          <AlertTriangle size={12} className="shrink-0" />
+          <span>{sizeWarning}</span>
+        </div>
+      )}
     </div>
   );
 };

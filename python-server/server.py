@@ -52,10 +52,12 @@ class CompressRequest(BaseModel):
     input_path: str
     output_path: str
     compression_level: int = 2
+    is_async: bool = False
 
 class ExtractImagesRequest(BaseModel):
     input_path: str
     output_dir: str
+    is_async: bool = False
 
 class PDFInfoRequest(BaseModel):
     path: str
@@ -336,7 +338,7 @@ def merge_pdfs(request: MergeRequest):
     try:
         if request.is_async:
             task_id = task_service.create_task("merge")
-            task_service.run_background_task(PDFService.merge_pdfs, request.paths, request.output_path)
+            task_service.run_background_task(task_id, PDFService.merge_pdfs, request.paths, request.output_path)
             return {"status": "success", "task_id": task_id}
         PDFService.merge_pdfs(request.paths, request.output_path)
         return {"status": "success", "message": "PDFs merged successfully"}
@@ -348,7 +350,7 @@ def split_pdf(request: SplitRequest):
     try:
         if request.is_async:
             task_id = task_service.create_task("split")
-            task_service.run_background_task(PDFService.split_pdf, request.input_path, request.split_pages, request.output_dir)
+            task_service.run_background_task(task_id, PDFService.split_pdf, request.input_path, request.split_pages, request.output_dir)
             return {"status": "success", "task_id": task_id}
         files = PDFService.split_pdf(request.input_path, request.split_pages, request.output_dir)
         return {"status": "success", "files": files}
@@ -358,6 +360,10 @@ def split_pdf(request: SplitRequest):
 @app.post("/api/compress")
 def compress_pdf(request: CompressRequest):
     try:
+        if request.is_async:
+            task_id = task_service.create_task("compress")
+            task_service.run_background_task(task_id, PDFService.compress_pdf, request.input_path, request.output_path, request.compression_level)
+            return {"status": "success", "task_id": task_id}
         PDFService.compress_pdf(request.input_path, request.output_path, request.compression_level)
         return {"status": "success", "message": "PDF compressed successfully"}
     except Exception as e:
@@ -366,6 +372,10 @@ def compress_pdf(request: CompressRequest):
 @app.post("/api/extract-images")
 def extract_images(request: ExtractImagesRequest):
     try:
+        if request.is_async:
+            task_id = task_service.create_task("extract_images")
+            task_service.run_background_task(task_id, PDFService.extract_images, request.input_path, request.output_dir)
+            return {"status": "success", "task_id": task_id}
         files = PDFService.extract_images(request.input_path, request.output_dir)
         return {"status": "success", "files": files}
     except Exception as e:
@@ -375,9 +385,6 @@ def extract_images(request: ExtractImagesRequest):
 def get_info(request: PDFInfoRequest):
     try:
         return PDFService.get_pdf_info(request.path)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -471,8 +478,9 @@ class InsertBookmarksRequest(BaseModel):
 @app.post("/api/bookmarks/insert")
 def insert_bookmarks(request: InsertBookmarksRequest):
     try:
+        bookmarks_list = [{"title": bm.title, "page": bm.page, "level": bm.level} for bm in request.bookmarks]
         result = BookmarkService.insert_bookmarks(
-            request.pdf_path, request.bookmarks, request.output_path, request.page_offset
+            request.pdf_path, bookmarks_list, request.output_path, request.page_offset
         )
         return {"status": "success", "data": result}
     except Exception as e:
@@ -827,25 +835,6 @@ def search_books(query: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/system/open-file")
-def system_open_file(request: AddBookRequest):
-    """Open a file using the system default application (Fallback)"""
-    try:
-        file_path = request.file_path
-        if not os.path.exists(file_path):
-            print(f"File not found: {file_path}")
-            raise HTTPException(status_code=404, detail=f"File not found on disk: {file_path}")
-        
-        if os.name == 'nt':  # Windows
-            os.startfile(file_path)
-        elif os.name == 'posix':  # macOS / Linux
-            import subprocess
-            subprocess.call(('open', file_path)) if os.uname().sysname == 'Darwin' else subprocess.call(('xdg-open', file_path))
-            
-        return {"status": "success", "message": "File opened"}
-    except Exception as e:
-        print(f"Error opening file: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/system/reveal-file")

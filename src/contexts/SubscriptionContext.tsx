@@ -74,15 +74,16 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   }, [data]);
 
   const value = {
-    status: data?.status || 'active', // Default to active if loading? No, be careful.
+    status: data?.status || 'active',
     plan: data?.plan_type || 'free',
     features: data?.features_enabled || [],
     userId,
     isLoading,
     daysRemaining,
     checkAccess: (feature: string) => {
+        // While loading, grant optimistic access to prevent flash of lock screen
+        if (isLoading) return true;
         if (!data) return false;
-        // If data is present, check features
         return data.features_enabled.includes(feature);
     },
     refreshSubscription

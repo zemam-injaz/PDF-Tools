@@ -1,10 +1,17 @@
 import { useState } from 'react';
 import { api } from '../../lib/api';
-import { Stamp, Plus, X, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
+import { Stamp, Plus, X, ArrowRight, CheckCircle, AlertCircle, Lock } from 'lucide-react';
 import { FileInput } from '../ui/FileInput';
 import { getDefaultOutputPath } from '../../lib/utils';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { PricingPage } from '../pricing/PricingPage';
+import { UpgradeButton } from '../pricing/UpgradeButton';
 
 export const WatermarkTool: React.FC = () => {
+  const { checkAccess } = useSubscription();
+  const [showPricing, setShowPricing] = useState(false);
+  const hasAccess = checkAccess('watermark_edit');
+
   const [inputPath, setInputPath] = useState('');
   const [outputPath, setOutputPath] = useState('');
 
@@ -61,6 +68,22 @@ export const WatermarkTool: React.FC = () => {
     { value: 'bottom-left', label: 'أسفل اليسار' },
     { value: 'bottom-right', label: 'أسفل اليمين' },
   ];
+
+  if (!hasAccess) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+        {showPricing && <PricingPage onClose={() => setShowPricing(false)} />}
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
+          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="text-rose-500" size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">خاصية مدفوعة</h2>
+          <p className="text-gray-500 mb-8">إضافة وإزالة العلامة المائية متاحة في النسخة الكاملة فقط.</p>
+          <UpgradeButton onClick={() => setShowPricing(true)} className="w-full justify-center" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card h-full flex flex-col animate-fade-in">

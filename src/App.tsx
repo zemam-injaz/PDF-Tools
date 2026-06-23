@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Files, Split, Minimize2, Image, Type, BookOpen, Layers, Stamp, Shield,
-  Library, MessageSquare, BarChart3, Zap, ArrowLeft
+  Library, MessageSquare, BarChart3, Zap, ArrowLeft, RotateCw, Trash2, FileOutput
 } from 'lucide-react';
 import { PDFMergeTool } from './components/tools/PDFMergeTool';
 import { PDFSplitTool } from './components/tools/PDFSplitTool';
@@ -10,7 +10,9 @@ import { PDFCompressTool } from './components/tools/PDFCompressTool';
 import { PDFExtractImagesTool } from './components/tools/PDFExtractImagesTool';
 import { TextExtractTool } from './components/tools/TextExtractTool';
 import { BookmarkTool } from './components/tools/BookmarkTool';
-import { PageOperationsTool } from './components/tools/PageOperationsTool';
+import { RotatePagesTool } from './components/tools/RotatePagesTool';
+import { DeletePagesTool } from './components/tools/DeletePagesTool';
+import { ExtractPagesTool } from './components/tools/ExtractPagesTool';
 import { WatermarkTool } from './components/tools/WatermarkTool';
 import { RemoveSecurityTool } from './components/tools/RemoveSecurityTool';
 import { BookLibraryTool } from './components/tools/BookLibraryTool';
@@ -41,7 +43,9 @@ function App() {
     { id: 'extract' as Tool, label: 'استخراج الصور', icon: Image, desc: 'استخراج جميع الصور من PDF' },
     { id: 'text' as Tool, label: 'استخراج النص', icon: Type, desc: 'تحويل PDF إلى TXT/DOCX/MD' },
     { id: 'bookmark' as Tool, label: 'إدارة الفهرس', icon: BookOpen, desc: 'استخراج أو تقسيم حسب الفهرس' },
-    { id: 'pages' as Tool, label: 'عمليات الصفحات', icon: Layers, desc: 'تدوير أو حذف أو استخراج صفحات' },
+    { id: 'rotate' as Tool, label: 'تدوير الصفحات', icon: RotateCw, desc: 'تغيير اتجاه صفحات معينة' },
+    { id: 'delete' as Tool, label: 'حذف صفحات', icon: Trash2, desc: 'حذف صفحات معينة من الملف' },
+    { id: 'extract-pages' as Tool, label: 'استخراج صفحات', icon: FileOutput, desc: 'استخراج صفحات في ملف جديد' },
     { id: 'watermark' as Tool, label: 'علامة مائية', icon: Stamp, desc: 'إضافة أو إزالة علامة مائية' },
     { id: 'security' as Tool, label: 'إزالة الحماية', icon: Shield, desc: 'إزالة كلمة المرور والقيود' },
     { id: 'images-to-pdf' as Tool, label: 'صور إلى PDF', icon: Image, desc: 'تجميع صور في ملف PDF' },
@@ -65,7 +69,9 @@ function App() {
       case 'extract': return <PDFExtractImagesTool />;
       case 'text': return <TextExtractTool />;
       case 'bookmark': return <BookmarkTool />;
-      case 'pages': return <PageOperationsTool />;
+      case 'rotate': return <RotatePagesTool />;
+      case 'delete': return <DeletePagesTool />;
+      case 'extract-pages': return <ExtractPagesTool />;
       case 'watermark': return <WatermarkTool />;
       case 'security': return <RemoveSecurityTool />;
       case 'library': return <BookLibraryTool />;

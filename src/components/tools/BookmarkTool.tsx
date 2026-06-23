@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../../lib/api';
 import {
   BookOpen, Copy, ChevronLeft, ChevronRight, Check, Plus,
-  Scissors, FileText, ArrowRight, Sparkles, ExternalLink,
-  Edit3, AlertCircle, CheckCircle, Info, X, Search, Loader2,
+  Scissors, FileText, Sparkles, ExternalLink,
+  Edit3, Info, X, Search, Loader2,
   ZoomIn, ZoomOut, Hash, Bookmark, LayoutGrid
 } from 'lucide-react';
 import { FileInput } from '../ui/FileInput';
@@ -23,7 +23,7 @@ const BookmarkThumbnailItem: React.FC<{
   thumbnail?: string;
   isLoading: boolean;
   zoomLevel: number;
-}> = ({ pageNum, title, isBookmarked, onToggle, onSetTitle, onVisible, thumbnail, isLoading, zoomLevel }) => {
+}> = ({ pageNum, title, isBookmarked, onToggle, onSetTitle, onVisible, thumbnail, isLoading }) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -104,7 +104,11 @@ export const BookmarkTool: React.FC = () => {
     setManualBookmarks({});
     if (path) {
       if (!outputPath && mode === 'insert') {
-        setOutputPath(getDefaultOutputPath(path, '_bookmarked'));
+        const separator = path.includes('\\') ? '\\' : '/';
+        const lastSep = path.lastIndexOf(separator);
+        if (lastSep > 0) {
+          setOutputPath(path.substring(0, lastSep));
+        }
       }
       if (mode === 'split') {
         if (!outputDir) {
@@ -147,6 +151,8 @@ export const BookmarkTool: React.FC = () => {
   const [pdfInfo, setPdfInfo] = useState<{ pageCount: number } | null>(null);
   const [thumbnails, setThumbnails] = useState<Record<number, string>>({});
   const [loadingThumbnails, setLoadingThumbnails] = useState<Record<number, boolean>>({});
+  // Ref-based in-flight tracker to prevent duplicate thumbnail fetches (stale-closure safe)
+  const thumbnailsInFlight = useRef<Set<number>>(new Set());
   const [manualBookmarks, setManualBookmarks] = useState<Record<number, string>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -191,25 +197,24 @@ export const BookmarkTool: React.FC = () => {
   const loadThumbnail = useCallback(async (page: number) => {
     if (!inputPath) return;
 
-    setLoadingThumbnails(prev => {
-        if (prev[page] || thumbnails[page]) return prev;
-        
-        (async () => {
-            try {
-              const dpi = zoomLevel === 1 ? 72 : (zoomLevel === 2 ? 100 : 150);
-              const res = await api.renderPage(inputPath, page, dpi);
-              if (res.success && res.data?.data?.image) {
-                setThumbnails(curr => ({ ...curr, [page]: res.data!.data.image }));
-              }
-            } catch (e) {
-              console.error(`Failed to load thumbnail for page ${page}:`, e);
-            } finally {
-              setLoadingThumbnails(curr => ({ ...curr, [page]: false }));
-            }
-        })();
+    // Guard: skip if already fetched or currently in-flight (ref is always current)
+    if (thumbnails[page] || thumbnailsInFlight.current.has(page)) return;
 
-        return { ...prev, [page]: true };
-    });
+    thumbnailsInFlight.current.add(page);
+    setLoadingThumbnails(prev => ({ ...prev, [page]: true }));
+
+    try {
+      const dpi = zoomLevel === 1 ? 72 : (zoomLevel === 2 ? 100 : 150);
+      const res = await api.renderPage(inputPath, page, dpi);
+      if (res.success && res.data?.data?.image) {
+        setThumbnails(curr => ({ ...curr, [page]: res.data!.data.image }));
+      }
+    } catch (e) {
+      console.error(`Failed to load thumbnail for page ${page}:`, e);
+    } finally {
+      thumbnailsInFlight.current.delete(page);
+      setLoadingThumbnails(curr => ({ ...curr, [page]: false }));
+    }
   }, [inputPath, thumbnails, zoomLevel]);
 
   const handleScroll = useCallback(() => {
@@ -256,9 +261,10 @@ export const BookmarkTool: React.FC = () => {
     // Convert manual bookmarks to text format
     const lines = Object.entries(manualBookmarks)
       .sort(([a], [b]) => parseInt(a) - parseInt(b))
-      .map(([page, title]) => `${title || `عنوان غير محدد - ${page}`} - ${page}`);
+      .map(([page, title]) => `${(title || '').trim() || 'عنوان غير محدد'} - ${page}`);
     
     setBookmarkText(lines.join('\n'));
+    setConsiderLevels(false);
     setShowSmartMode(false);
     setInsertStep(2);
   };
@@ -369,11 +375,17 @@ Rules:
   // Insert bookmarks into PDF
   const handleInsert = async () => {
     if (!inputPath || !outputPath || parsedBookmarks.length === 0) return;
+    
+    const separator = outputPath.includes('\\') ? '\\' : '/';
+    const inputName = inputPath.substring(inputPath.lastIndexOf(separator) + 1);
+    const nameWithoutExt = inputName.endsWith('.pdf') ? inputName.slice(0, -4) : inputName;
+    const finalOutputPath = `${outputPath}${outputPath.endsWith(separator) ? '' : separator}${nameWithoutExt}_bookmarked.pdf`;
+
     setLoading(true);
     setStatus({ type: '', message: 'جاري إدراج الفهرس...' });
     
     // Pass pageOffset to backend to ensure it applies to all bookmarks
-    const res = await api.insertBookmarks(inputPath, parsedBookmarks, outputPath, pageOffset);
+    const res = await api.insertBookmarks(inputPath, parsedBookmarks, finalOutputPath, pageOffset);
     setLoading(false);
     
     if (res.success) {
@@ -387,10 +399,18 @@ Rules:
   // Transfer bookmarks
   const handleTransfer = async () => {
     if (!sourcePath || !inputPath || !outputPath) return;
+    
+    const separator = outputPath.includes('\\') ? '\\' : '/';
+    const inputName = inputPath.substring(inputPath.lastIndexOf(separator) + 1);
+    const nameWithoutExt = inputName.endsWith('.pdf') ? inputName.slice(0, -4) : inputName;
+    const finalOutputPath = outputPath.toLowerCase().endsWith('.pdf')
+      ? outputPath
+      : `${outputPath}${outputPath.endsWith(separator) ? '' : separator}${nameWithoutExt}_with_bookmarks.pdf`;
+
     setLoading(true);
     setStatus({ type: '', message: 'جاري نقل الفهرس...' });
 
-    const res = await api.transferBookmarks(sourcePath, inputPath, outputPath);
+    const res = await api.transferBookmarks(sourcePath, inputPath, finalOutputPath);
     setLoading(false);
 
     if (res.success) {
@@ -423,8 +443,8 @@ Rules:
     <div className="card h-full flex flex-col animate-fade-in relative z-0">
       {/* Smart Mode Overlay */}
       {showSmartMode && (
-        <div className="absolute inset-0 z-[100] bg-white flex flex-col animate-slide-up">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-gray-50/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-slide-up">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-gray-50/50 backdrop-blur-sm">
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => setShowSmartMode(false)}
@@ -548,7 +568,15 @@ Rules:
         {modes.map(m => (
           <button
             key={m.id}
-            onClick={() => { setMode(m.id); setInsertStep(1); setStatus({ type: '', message: '' }); }}
+            onClick={() => { 
+              setMode(m.id); 
+              setInsertStep(1); 
+              setStatus({ type: '', message: '' }); 
+              // Initialize outputPath if we switch to insert mode and have an inputPath
+              if (m.id === 'insert' && inputPath && !outputPath) {
+                setOutputPath(getDefaultOutputPath(inputPath, '_bookmarked'));
+              }
+            }}
             className={`flex-1 py-4 px-6 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-3 border ${mode === m.id
                 ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm'
                 : 'bg-white border-border text-secondary hover:bg-gray-50'
@@ -559,6 +587,24 @@ Rules:
           </button>
         ))}
       </div>
+
+      {/* Status Notification */}
+      {status.message && (
+        <div className={`mb-6 p-4 rounded-xl border-2 flex items-center gap-3 text-sm font-bold animate-slide-up shadow-sm ${
+          loading
+            ? 'bg-blue-50 border-blue-200 text-blue-700'
+            : status.type === 'success'
+            ? 'bg-green-50 border-green-200 text-green-700'
+            : status.type === 'error'
+            ? 'bg-red-50 border-red-200 text-red-700'
+            : 'bg-blue-50 border-blue-200 text-blue-700'
+        }`}>
+          {loading && <Loader2 size={20} className="animate-spin shrink-0" />}
+          {!loading && status.type === 'success' && <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          {!loading && status.type === 'error' && <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          <span className="flex-1">{status.message}</span>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
         {/* EXTRACT MODE */}
@@ -638,8 +684,8 @@ Rules:
                 value={outputPath}
                 onChange={setOutputPath}
                 label="3. مسار حفظ الملف الناتج"
-                placeholder="أين تود حفظ الملف الجديد؟"
-                isSave
+                placeholder="اختر مجلد الحفظ..."
+                isDirectory
               />
 
               <button
@@ -859,11 +905,21 @@ Rules:
                               className={`cursor-pointer transition-colors ${activeBookmarkIndex === i ? 'bg-amber-50 border-r-4 border-amber-500' : 'hover:bg-indigo-50/30'}`}
                             >
                               <td className="p-4" style={{ paddingRight: b.level === 1 ? '1rem' : `${b.level * 1.5}rem` }}>
-                                <div className="flex items-center gap-2">
-                                  {b.level > 1 && <span className="text-gray-300">↳</span>}
-                                  <span className={`${b.level === 1 ? 'font-bold text-indigo-900' : 'text-gray-600'}`}>
-                                    {b.title}
-                                  </span>
+                                <div className="flex items-center gap-2 w-full">
+                                  {b.level > 1 && <span className="text-gray-300 shrink-0">↳</span>}
+                                  <input
+                                    type="text"
+                                    value={b.title}
+                                    onChange={(e) => {
+                                      const newBookmarks = [...parsedBookmarks];
+                                      newBookmarks[i] = { ...newBookmarks[i], title: e.target.value };
+                                      setParsedBookmarks(newBookmarks);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()} // Prevent row click preview trigger
+                                    className="bg-transparent border-b border-dashed border-transparent hover:border-gray-300 focus:border-indigo-500 focus:bg-white outline-none w-full py-1 px-2 rounded text-indigo-900 font-bold transition-all text-right"
+                                    dir="rtl"
+                                    placeholder="أدخل عنوان الإشارة..."
+                                  />
                                 </div>
                               </td>
                               <td className="p-4 text-center tabular-nums font-bold text-amber-600">
@@ -923,9 +979,11 @@ Rules:
                           <label className="text-xs font-bold text-amber-900 block">مكان الحفظ</label>
                           <FileInput
                             value={outputPath}
-                            onChange={setOutputPath}
-                            placeholder="مسار الحفظ..."
-                            isSave
+                            onChange={(path) => {
+                              setOutputPath(path || '');
+                            }}
+                            placeholder="اختر مجلد الحفظ..."
+                            isDirectory
                           />
                         </div>
                       </div>
@@ -1042,9 +1100,7 @@ Rules:
                     <button
                       onClick={async () => {
                         const { openPath } = await import('../../lib/utils');
-                        const separator = outputPath.includes('\\') ? '\\' : '/';
-                        const dir = outputPath.substring(0, outputPath.lastIndexOf(separator));
-                        openPath(dir);
+                        openPath(outputPath);
                       }}
                       className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white py-4 px-10 text-lg font-bold flex-1"
                     >

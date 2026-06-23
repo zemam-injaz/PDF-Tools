@@ -31,15 +31,16 @@ class SecurityService:
             doc = fitz.open(pdf_path)
 
             is_encrypted = doc.is_encrypted
-            needs_password = doc.needs_pass
-            is_unlocked = True  # If we got here, it's at least open
+            needs_password = bool(doc.needs_pass)
+            is_unlocked = not needs_password
 
-            # Get metadata even if encrypted
+            # Get metadata even if encrypted (if not accessible, metadata is None)
+            doc_metadata = doc.metadata or {}
             metadata = {
-                "title": doc.metadata.get("title", ""),
-                "author": doc.metadata.get("author", ""),
-                "creator": doc.metadata.get("creator", ""),
-                "producer": doc.metadata.get("producer", ""),
+                "title": doc_metadata.get("title", ""),
+                "author": doc_metadata.get("author", ""),
+                "creator": doc_metadata.get("creator", ""),
+                "producer": doc_metadata.get("producer", ""),
                 "page_count": doc.page_count
             }
 
@@ -85,7 +86,7 @@ class SecurityService:
                 "restrictions": restrictions,
                 "metadata": metadata
             }
-        except fitz.fitz.PasswordNeeded:
+        except fitz.PasswordNeeded:
             return {
                 "is_encrypted": True,
                 "needs_password": True,
@@ -111,6 +112,7 @@ class SecurityService:
             password: Password if required to open
         """
         try:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
             # Try to open with password if provided
             doc = fitz.open(pdf_path)
             
@@ -163,9 +165,8 @@ class SecurityService:
             encryption_method: AES-256, AES-128, or RC4-128
         """
         try:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
             doc = fitz.open(pdf_path)
-
-            # Build permission flags
             perm = 0
             if allow_printing:
                 perm |= fitz.PDF_PERM_PRINT
@@ -238,8 +239,9 @@ class SecurityService:
             new_owner_password: New owner password
         """
         try:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
             doc = fitz.open(pdf_path)
-            
+
             if doc.needs_pass:
                 success = doc.authenticate(current_password)
                 if not success:

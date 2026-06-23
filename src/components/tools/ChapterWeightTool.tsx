@@ -4,7 +4,12 @@ import {
   Loader2, AlertCircle, Clock,
   Play, CheckCircle, History as HistoryIcon, Bell, Calendar as CalendarIcon, Trash2
 } from 'lucide-react';
-import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
+// Dynamically imported only in Tauri environment to avoid crashing in browser/test contexts
+async function getTauriNotification() {
+  const isTauri = !!(window as any).__TAURI__ || !!(window as any).__TAURI_INTERNALS__;
+  if (!isTauri) return null;
+  return import('@tauri-apps/plugin-notification');
+}
 import { bookmarkApi, type Bookmark } from '../../api/bookmarkApi';
 import { getApiBaseUrl } from '../../lib/api';
 import type { Tool } from '../layout/Sidebar';
@@ -107,6 +112,13 @@ export function ChapterWeightTool({ onNavigate }: { onNavigate?: (tool: Tool) =>
   };
 
   const handleTestNotification = async () => {
+    const notifModule = await getTauriNotification();
+    if (!notifModule) {
+      setToast({ message: 'الإشعارات متاحة فقط في تطبيق المكتب', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+    const { isPermissionGranted, requestPermission, sendNotification } = notifModule;
     let permissionGranted = await isPermissionGranted();
     if (!permissionGranted) {
       const permission = await requestPermission();
@@ -127,6 +139,13 @@ export function ChapterWeightTool({ onNavigate }: { onNavigate?: (tool: Tool) =>
   };
 
   const handleScheduledTest = async () => {
+    const notifModule = await getTauriNotification();
+    if (!notifModule) {
+      setToast({ message: 'الإشعارات متاحة فقط في تطبيق المكتب', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+    const { isPermissionGranted, requestPermission, sendNotification } = notifModule;
     let permissionGranted = await isPermissionGranted();
     if (!permissionGranted) {
       const permission = await requestPermission();

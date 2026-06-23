@@ -2,6 +2,9 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from services.payment_service import payment_service
+import os
+import hmac
+import hashlib
 
 router = APIRouter(prefix="/api/payment", tags=["Payment"])
 
@@ -24,16 +27,46 @@ def create_checkout(request: CheckoutRequest):
 
 @router.post("/webhook")
 async def payment_webhook(request: Request, background_tasks: BackgroundTasks):
-    """Handle webhook from payment gateway"""
+    """Handle webhook from payment gateway with HMAC-SHA512 signature validation."""
+    hmac_secret = os.environ.get("PAYMOB_HMAC_SECRET", "")
+
+    if hmac_secret:
+        # PayMob sends HMAC-SHA512 hash in the HTTP_HMAC header
+        incoming_hmac = request.headers.get("HTTP_HMAC", "")
+        raw_body = await request.body()
+
+        expected = hmac.new(
+            hmac_secret.encode("utf-8"),
+            raw_body,
+            hashlib.sha512
+        ).hexdigest()
+
+        if not hmac.compare_digest(expected, incoming_hmac):
+            print("[WEBHOOK] HMAC signature mismatch — rejecting request.", flush=True)
+            raise HTTPException(status_code=403, detail="Invalid webhook signature")
+
+        try:
+            import json
+            data = json.loads(raw_body)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid JSON body")
+    else:
+        # No secret configured — dev/mock mode, skip validation but warn
+        print("[WEBHOOK] WARNING: PAYMOB_HMAC_SECRET not set. Skipping signature check (mock mode).", flush=True)
+        try:
+            data = await request.json()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Invalid JSON body")
+
     try:
-        data = await request.json()
         # Process in background
         background_tasks.add_task(payment_service.process_webhook, data)
         return {"status": "success"}
     except Exception as e:
-        # PayMob expects 200 OK
+        # PayMob expects 200 OK on success
         print(f"Webhook Error: {e}")
         return {"status": "error", "detail": str(e)}
+
 
 # Mock Gateway Endpoint
 @router.get("/mock-gateway", response_class=HTMLResponse)

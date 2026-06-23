@@ -24,6 +24,7 @@ class PDFService:
     def merge_pdfs(input_paths: List[str], output_path: str) -> bool:
         """Merge multiple PDFs into one."""
         try:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
             result = fitz.open()
             for path in input_paths:
                 with fitz.open(path) as mfile:
@@ -41,6 +42,7 @@ class PDFService:
         split_pages: List of page numbers (1-based) where new files should start.
         """
         try:
+            os.makedirs(output_dir, exist_ok=True)
             doc = fitz.open(input_path)
             total_pages = doc.page_count
             base_name = os.path.splitext(os.path.basename(input_path))[0]
@@ -91,8 +93,8 @@ class PDFService:
         level 4: garbage=4, deflate=True, clean=True, linear=True (Max/Aggressive)
         """
         try:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
             doc = fitz.open(input_path)
-            
             garbage = 0
             deflate = False
             clean = False
@@ -154,6 +156,7 @@ class PDFService:
     def create_from_images(image_paths: List[str], output_path: str) -> bool:
         """Create a PDF from a list of images."""
         try:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
             doc = fitz.open()
             for img_path in image_paths:
                 img = fitz.open(img_path)
@@ -174,6 +177,7 @@ class PDFService:
     def convert_to_images(pdf_path: str, output_dir: str, format: str = 'png', dpi: int = 150) -> List[str]:
         """Convert PDF pages to images (PNG/JPG)."""
         try:
+            os.makedirs(output_dir, exist_ok=True)
             doc = fitz.open(pdf_path)
             base_name = os.path.splitext(os.path.basename(pdf_path))[0]
             saved_files = []
@@ -196,13 +200,13 @@ class PDFService:
     def update_metadata(pdf_path: str, output_path: str, metadata: Dict[str, str]) -> bool:
         """Update PDF metadata."""
         try:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
             doc = fitz.open(pdf_path)
             current_metadata = doc.metadata
             
             # Update only provided keys
             for key, value in metadata.items():
-                if key in current_metadata:
-                    current_metadata[key] = value
+                current_metadata[key] = value
             
             doc.set_metadata(current_metadata)
             doc.save(output_path)

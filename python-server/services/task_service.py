@@ -36,9 +36,41 @@ class TaskInfo:
         }
 
 class TaskService:
+    # Evict completed/failed tasks older than this many seconds (2 hours)
+    EVICTION_AGE_SECONDS = 7200
+    # How often to run the eviction sweep (30 minutes)
+    EVICTION_INTERVAL_SECONDS = 1800
+
     def __init__(self):
         self.tasks: Dict[str, TaskInfo] = {}
         self.lock = threading.Lock()
+        self._start_eviction_thread()
+
+    def _start_eviction_thread(self):
+        """Start a background daemon thread that periodically cleans up old tasks."""
+        def evict():
+            import time
+            while True:
+                time.sleep(self.EVICTION_INTERVAL_SECONDS)
+                self._evict_old_tasks()
+
+        t = threading.Thread(target=evict, daemon=True, name="TaskEvictionThread")
+        t.start()
+
+    def _evict_old_tasks(self):
+        """Remove completed or failed tasks that are older than EVICTION_AGE_SECONDS."""
+        now = datetime.now()
+        terminal_statuses = {TaskStatus.COMPLETED, TaskStatus.FAILED}
+        with self.lock:
+            stale = [
+                tid for tid, task in self.tasks.items()
+                if task.status in terminal_statuses
+                and (now - task.updated_at).total_seconds() > self.EVICTION_AGE_SECONDS
+            ]
+            for tid in stale:
+                del self.tasks[tid]
+            if stale:
+                print(f"[TASK EVICTION] Removed {len(stale)} stale tasks.", flush=True)
 
     def create_task(self, task_type: str) -> str:
         task_id = str(uuid.uuid4())

@@ -46,6 +46,8 @@ interface ApiResult<T> {
 }
 
 async function request<T>(endpoint: string, method: 'GET' | 'POST' = 'GET', body?: unknown, headers: Record<string, string> = {}): Promise<ApiResult<T>> {
+  // Ensure port is initialized before every request (no-op if already done)
+  await initializeBackendPort();
   const url = `${BASE_URL}${endpoint}`;
   console.log(`[API Request] ${method} ${url}`, body);
 
@@ -178,7 +180,7 @@ export const api = {
 
   // Security Operations
   checkSecurity: (pdfPath: string) =>
-    request<{ status: string; data: { is_encrypted: boolean; needs_password: boolean; restrictions: Record<string, boolean> } }>('/api/security/check', 'POST', { pdf_path: pdfPath }),
+    request<{ status: string; data: { is_encrypted: boolean; needs_password: boolean; permissions: Record<string, boolean>; restrictions: string[] } }>('/api/security/check', 'POST', { pdf_path: pdfPath }),
 
   removeSecurity: (pdfPath: string, outputPath: string, password?: string) =>
     request<{ status: string; data: { was_encrypted: boolean; security_removed: boolean } }>('/api/security/remove', 'POST', { pdf_path: pdfPath, output_path: outputPath, password }),

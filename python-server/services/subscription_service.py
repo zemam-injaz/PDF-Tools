@@ -181,11 +181,11 @@ class SubscriptionService:
             return base_features
         elif plan == PlanType.TRIAL:
             # Trial gets everything for 30 days
-            return base_features + ["fast_reading", "text_extract", "tahweel", "pro_stats", "sync", "batch_processing"]
+            return base_features + ["fast_reading", "text_extract", "tahweel", "watermark_edit", "remove_security", "pro_stats", "sync", "batch_processing"]
         elif plan == PlanType.MONTHLY or plan == PlanType.YEARLY:
-            return base_features + ["fast_reading", "text_extract", "tahweel", "pro_stats", "sync", "batch_processing"]
+            return base_features + ["fast_reading", "text_extract", "tahweel", "watermark_edit", "remove_security", "pro_stats", "sync", "batch_processing"]
         elif plan == PlanType.LIFETIME:
-            return base_features + ["fast_reading", "text_extract", "tahweel", "pro_stats", "sync", "batch_processing", "priority_support", "beta_access"]
+            return base_features + ["fast_reading", "text_extract", "tahweel", "watermark_edit", "remove_security", "pro_stats", "sync", "batch_processing", "priority_support", "beta_access"]
         
         return base_features
 

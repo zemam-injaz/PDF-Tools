@@ -138,8 +138,8 @@ class BookmarkService:
         indent = len(original_line) - len(stripped)
         
         # Tab = level 2+, spaces (2+) = level 2+
-        if indent >= 4 or '\t' in original_line[:indent]:
-            base_level = 2 if indent < 8 else 3
+        if indent >= 2 or '\t' in original_line[:indent]:
+            base_level = 2 if indent < 4 else 3
         else:
             base_level = 1
 
@@ -147,7 +147,8 @@ class BookmarkService:
         title_stripped = title.strip()
         
         # Level 1: Simple chapter (الفصل الأول, Chapter 1, 1., etc.)
-        if re.match(r'^(الفصل|الباب|Chapter|Part)\s+\d+', title_stripped, re.IGNORECASE):
+        # Only check this if not indented, to prevent indented chapters from being flattened
+        if indent == 0 and re.match(r'^(الفصل|الباب|Chapter|Part)\s+\d+', title_stripped, re.IGNORECASE):
             return 1
         
         # Level 2: Sub-section (1.1, 1.1.1, etc.)
@@ -248,7 +249,8 @@ class BookmarkService:
             # Check if we are overwriting the input file
             input_abs = os.path.abspath(pdf_path)
             output_abs = os.path.abspath(output_path)
-            is_overwrite = input_abs == output_abs
+            # Use os.path.normcase to handle Windows case-insensitivity
+            is_overwrite = os.path.normcase(input_abs) == os.path.normcase(output_abs)
             
             final_output_path = output_path
             if is_overwrite:
@@ -284,9 +286,22 @@ class BookmarkService:
                 toc = BookmarkService.normalize_toc_levels(toc)
                 doc.set_toc(toc)
                 
-                # Use garbage collection and deflate for safe, efficient saving
-                doc.save(final_output_path, garbage=4, deflate=True)
-                doc.close()
+                # Try saving with garbage collection for optimization
+                try:
+                    doc.save(final_output_path, garbage=4, deflate=True)
+                    doc.close()
+                except Exception as save_err:
+                    print(f"Warning: Failed to save with garbage=4 ({save_err}). Retrying with PDF washing...")
+                    doc.close()
+                    # Re-open the document, create a new doc, and copy pages to fix broken xrefs
+                    # This completely avoids "cannot find object in xref" errors
+                    old_doc = fitz.open(pdf_path)
+                    new_doc = fitz.open()
+                    new_doc.insert_pdf(old_doc)
+                    new_doc.set_toc(toc)
+                    new_doc.save(final_output_path, garbage=4, deflate=True)
+                    new_doc.close()
+                    old_doc.close()
                 
                 # If overwriting, replace original with temp
                 if is_overwrite:
@@ -449,11 +464,26 @@ class BookmarkService:
                 raise Exception("No bookmarks found in source PDF")
                 
             # Open target and set TOC
-            with fitz.open(target_pdf) as tgt_doc:
-                # Normalize TOC before setting to ensure PyMuPDF compatibility
-                normalized_toc = BookmarkService.normalize_toc_levels(toc)
-                tgt_doc.set_toc(normalized_toc)
+            # Do not use `with` here because we might need to re-open it if save fails
+            tgt_doc = fitz.open(target_pdf)
+            # Normalize TOC before setting to ensure PyMuPDF compatibility
+            normalized_toc = BookmarkService.normalize_toc_levels(toc)
+            tgt_doc.set_toc(normalized_toc)
+            
+            try:
                 tgt_doc.save(output_path, garbage=4, deflate=True)
+                tgt_doc.close()
+            except Exception as e:
+                print(f"Warning: Failed to save with garbage=4 in transfer ({e}). Retrying with PDF washing...")
+                tgt_doc.close()
+                # Re-open the document, create a new doc, and copy pages to fix broken xrefs
+                old_doc = fitz.open(target_pdf)
+                new_doc = fitz.open()
+                new_doc.insert_pdf(old_doc)
+                new_doc.set_toc(normalized_toc)
+                new_doc.save(output_path, garbage=4, deflate=True)
+                new_doc.close()
+                old_doc.close()
             
             return {
                 "count": len(toc),
@@ -481,10 +511,15 @@ class BookmarkService:
         level_map = {old: i + 1 for i, old in enumerate(unique_levels)}
         
         normalized = []
+        prev_level = 0
         for item in toc:
             # item is [level, title, page, ...]
             new_item = list(item)
-            new_item[0] = level_map[item[0]]
+            mapped_level = level_map[item[0]]
+            # PyMuPDF mandates no level jump > 1 between consecutive items
+            clamped_level = min(mapped_level, prev_level + 1)
+            new_item[0] = clamped_level
+            prev_level = clamped_level
             normalized.append(new_item)
             
         # Double check: sometimes item 0 is NOT the min level

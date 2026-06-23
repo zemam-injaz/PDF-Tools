@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
-import { ArrowRight, CheckCircle, AlertCircle, LogIn, LogOut, Check, Zap, Settings, HelpCircle, FolderOpen } from 'lucide-react';
+import { ArrowRight, CheckCircle, AlertCircle, LogIn, LogOut, Check, Zap, Settings, HelpCircle, FolderOpen, Lock } from 'lucide-react';
 import { FileInput } from '../ui/FileInput';
 import { openPath } from '../../lib/utils';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { PricingPage } from '../pricing/PricingPage';
+import { UpgradeButton } from '../pricing/UpgradeButton';
 
 export const TahweelTool: React.FC = () => {
+  const { checkAccess } = useSubscription();
+  const [showPricing, setShowPricing] = useState(false);
+  const hasAccess = checkAccess('tahweel');
+
   const [inputPath, setInputPath] = useState('');
   const [outputDir, setOutputDir] = useState('');
   const [removeNewlines, setRemoveNewlines] = useState(true);
@@ -35,11 +42,28 @@ export const TahweelTool: React.FC = () => {
     setLoading(true);
     const res = await api.tahweel.signIn();
     if (res.success) {
-      setTimeout(checkAuth, 1000);
+      // Poll until authenticated (OAuth browser flow can take variable time)
+      const maxAttempts = 60; // 60 × 1.5s = 90 seconds max
+      let attempts = 0;
+      const poll = async () => {
+        attempts++;
+        const authRes = await api.tahweel.getAuthStatus();
+        if (authRes.success && authRes.data?.authenticated) {
+          setAuthStatus(authRes.data);
+          setLoading(false);
+        } else if (attempts < maxAttempts) {
+          setTimeout(poll, 1500);
+        } else {
+          // Timed out — stop polling, let user retry manually
+          setLoading(false);
+          setStatus({ type: 'error', message: 'انتهت مهلة الانتظار. يرجى المحاولة مجدداً.' });
+        }
+      };
+      setTimeout(poll, 1500);
     } else {
       setStatus({ type: 'error', message: res.error || 'فشل تسجيل الدخول' });
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSignOut = async () => {
@@ -82,6 +106,22 @@ export const TahweelTool: React.FC = () => {
       setStatus({ type: 'error', message: res.error || 'حدث خطأ أثناء بدء التحويل' });
     }
   };
+
+  if (!hasAccess) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+        {showPricing && <PricingPage onClose={() => setShowPricing(false)} />}
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="text-orange-500" size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">خاصية مدفوعة</h2>
+          <p className="text-gray-500 mb-8">أداة Tahweel للتحويل الاحترافي متاحة في النسخة الكاملة فقط.</p>
+          <UpgradeButton onClick={() => setShowPricing(true)} className="w-full justify-center" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card h-full flex flex-col animate-fade-in">

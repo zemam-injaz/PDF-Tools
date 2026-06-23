@@ -34,13 +34,6 @@ export const TextExtractTool: React.FC = () => {
   const [lastOutputFolder, setLastOutputFolder] = useState('');
   const [stats, setStats] = useState<{ wordCount?: number; duration?: number; pageCount?: number } | null>(null);
 
-  const checkAuth = async () => {
-    const res = await api.tahweel.getAuthStatus();
-    if (res.success && res.data) {
-      setAuthStatus(res.data);
-    }
-  };
-
   const handleExtract = async () => {
     if (!inputPath) return;
 

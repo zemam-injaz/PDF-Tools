@@ -3,8 +3,15 @@ import { api } from '../../lib/api';
 import { Shield, Lock, Unlock, Check, X, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { FileInput } from '../ui/FileInput';
 import { getDefaultOutputPath } from '../../lib/utils';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { PricingPage } from '../pricing/PricingPage';
+import { UpgradeButton } from '../pricing/UpgradeButton';
 
 export const RemoveSecurityTool: React.FC = () => {
+  const { checkAccess } = useSubscription();
+  const [showPricing, setShowPricing] = useState(false);
+  const hasAccess = checkAccess('remove_security');
+
   const [inputPath, setInputPath] = useState('');
   const [outputPath, setOutputPath] = useState('');
 
@@ -20,7 +27,8 @@ export const RemoveSecurityTool: React.FC = () => {
   const [securityInfo, setSecurityInfo] = useState<{
     is_encrypted: boolean;
     needs_password: boolean;
-    restrictions: Record<string, boolean>;
+    permissions: Record<string, boolean>;
+    restrictions: string[];
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
@@ -66,6 +74,22 @@ export const RemoveSecurityTool: React.FC = () => {
     editing: 'التحرير',
     annotations: 'التعليقات'
   };
+
+  if (!hasAccess) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+        {showPricing && <PricingPage onClose={() => setShowPricing(false)} />}
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="text-orange-500" size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">خاصية مدفوعة</h2>
+          <p className="text-gray-500 mb-8">إزالة حماية PDF متاحة في النسخة الكاملة فقط.</p>
+          <UpgradeButton onClick={() => setShowPricing(true)} className="w-full justify-center" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card h-full flex flex-col animate-fade-in">
@@ -121,7 +145,7 @@ export const RemoveSecurityTool: React.FC = () => {
                 <div className="space-y-3">
                   <span className="text-sm font-semibold text-primary block">حالة القيود الحالية:</span>
                   <div className="grid grid-cols-2 gap-3">
-                    {Object.entries(securityInfo.restrictions).map(([key, allowed]) => (
+                    {Object.entries(securityInfo.permissions).map(([key, allowed]) => (
                       <div key={key} className={`flex items-center gap-2 text-sm p-2 rounded-lg ${allowed ? 'bg-green-50/50' : 'bg-red-50/50'}`}>
                         {allowed ? <Check size={16} className="text-green-600" /> : <X size={16} className="text-red-500" />}
                         <span className={allowed ? 'text-green-800' : 'text-red-800'}>{restrictionLabels[key] || key}</span>
