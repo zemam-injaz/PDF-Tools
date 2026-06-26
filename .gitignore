@@ -32,6 +32,10 @@ python-server/build/
 python-server/dist/
 *.spec
 
+# Python cache
+__pycache__/
+*.pyc
+
 # Secrets and Credentials
 python-server/client_secrets.json
 python-server/credentials.json

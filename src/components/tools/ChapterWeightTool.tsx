@@ -3,7 +3,7 @@ import {
   FileText, BarChart3, Calendar, BookOpen,
   Loader2, AlertCircle, Clock,
   Play, CheckCircle, History as HistoryIcon, Bell, Calendar as CalendarIcon, Trash2,
-  Folder, FolderOpen, Plus, Minus
+  Folder, FolderOpen, Plus, Minus, RotateCw
 } from 'lucide-react';
 async function getTauriNotification() {
   const isTauri = !!(window as any).__TAURI__ || !!(window as any).__TAURI_INTERNALS__;
@@ -47,7 +47,133 @@ interface FolderDayPlan {
   page_count: number;
 }
 
+interface ReviewItem {
+  date: string;
+  chapter: string;
+  stage: string;
+}
+
+type Locale = 'ar' | 'en';
 type AnalysisMode = 'file' | 'folder';
+
+const TR: Record<Locale, Record<string, string>> = {
+  ar: {
+    title: 'وزن الفصول',
+    desc: 'تحليل أحجام الفصول وإنشاء خطة قراءة مخصصة',
+    fileMode: 'ملف واحد',
+    folderMode: 'مجلد + مجلدات فرعية',
+    chapters: 'الفصول',
+    totalPages: 'إجمالي الصفحات',
+    planDays: 'أيام الخطة',
+    finishDate: 'تاريخ الانتهاء',
+    files: 'الملفات',
+    firstRead: 'first read',
+    reviewDue: 'review due',
+    reviewsScheduled: 'مراجعة مجدولة',
+    reviewsScheduledPl: 'مراجعات مجدولة',
+    table: 'جدول',
+    calendar: 'تقويم',
+    export: 'تصدير',
+    createPlan: 'إنشاء الخطة',
+    startDate: 'تاريخ البدء',
+    pagesPerDay: 'صفحات يومياً',
+    estDays: 'الأيام المقدرة',
+    spacedRep: 'مراجعة متباعدة',
+    readingPlan: 'خطة القراءة',
+    folderPlan: 'خطة القراءة - حسب الملفات',
+    day: 'اليوم',
+    date: 'التاريخ',
+    pages: 'الصفحات',
+    count: 'الكمية',
+    file: 'الملف',
+    pageShort: 'ص',
+    newRead: 'جديد',
+    markDone: 'تم',
+    completed: 'مكتمل',
+    reviews: 'مراجعات',
+    reviewLabel: 'مراجعة',
+    noReadings: 'لا توجد قراءات أو مراجعات في هذا اليوم',
+    todayReviews: 'مراجعات اليوم',
+    pageCount: 'صفحة',
+    localeSwitch: 'EN',
+    history: 'سجل العمليات',
+    noHistory: 'لا يوجد سجل سابق',
+    selectPdf: 'اختيار ملف PDF',
+    analyze: 'تحليل الفصول',
+    changeFile: 'تغيير الملف',
+    selectFolder: 'اختيار مجلد',
+    scanFolder: 'مسح المجلد',
+    changeFolder: 'تغيير المجلد',
+    estimatedDays: 'الأيام المقدرة',
+    pagesPerDayLabel: 'صفحات يومياً',
+    reviewing: 'مراجعة',
+    addToCalendar: 'إضافة للتقويم',
+    testNotif: 'اختبار الإشعار',
+    testSched: 'اختبار جدولة',
+    revNextDay: 'اليوم التالي',
+    revWeek: 'أسبوع',
+    rev3Weeks: '3 أسابيع',
+    rev6Weeks: '6 أسابيع',
+    minute: 'دقيقة',
+  },
+  en: {
+    title: 'Chapter Weight',
+    desc: 'Analyze chapter sizes and create a custom reading plan',
+    fileMode: 'Single File',
+    folderMode: 'Folder + Subfolders',
+    chapters: 'Chapters',
+    totalPages: 'Total Pages',
+    planDays: 'Plan Days',
+    finishDate: 'Finish Date',
+    files: 'Files',
+    firstRead: 'first read',
+    reviewDue: 'review due',
+    reviewsScheduled: 'review scheduled',
+    reviewsScheduledPl: 'reviews scheduled',
+    table: 'Table',
+    calendar: 'Calendar',
+    export: 'Export',
+    createPlan: 'Generate Plan',
+    startDate: 'Start Date',
+    pagesPerDay: 'Pages/day',
+    estDays: 'Est. Days',
+    spacedRep: 'Spaced Repetition',
+    readingPlan: 'Reading Plan',
+    folderPlan: 'Reading Plan - By File',
+    day: 'Day',
+    date: 'Date',
+    pages: 'Pages',
+    count: 'Count',
+    file: 'File',
+    pageShort: 'p',
+    newRead: 'new',
+    markDone: '✓ Done',
+    completed: 'Completed',
+    reviews: 'Reviews',
+    reviewLabel: 'Review',
+    noReadings: 'No readings or reviews for this day',
+    todayReviews: "Today's Reviews",
+    pageCount: 'pages',
+    localeSwitch: 'عربي',
+    history: 'History',
+    noHistory: 'No previous history',
+    selectPdf: 'Select PDF',
+    analyze: 'Analyze Chapters',
+    changeFile: 'Change File',
+    selectFolder: 'Select Folder',
+    scanFolder: 'Scan Folder',
+    changeFolder: 'Change Folder',
+    reviewing: 'Review',
+    addToCalendar: 'Add to Calendar',
+    testNotif: 'Test Notification',
+    testSched: 'Test Schedule',
+    revNextDay: 'next day',
+    revWeek: '1 week',
+    rev3Weeks: '3 weeks',
+    rev6Weeks: '6 weeks',
+    minute: 'min',
+  }
+};
 
 function collectAllFiles(entries: PdfTreeEntry[]): PdfTreeEntry[] {
   const result: PdfTreeEntry[] = [];
@@ -166,7 +292,60 @@ function TreeNodes({ entries, depth, onAssignDays }: { entries: PdfTreeEntry[]; 
 }
 
 export function ChapterWeightTool({ onNavigate }: { onNavigate?: (tool: Tool) => void }) {
+  const [locale, setLocale] = useState<Locale>(() => (localStorage.getItem('chapter_weight_locale') as Locale) || 'ar');
+  const t = useCallback((k: string) => TR[locale][k] || k, [locale]);
+
   const [mode, setMode] = useState<AnalysisMode>('file');
+
+  // Completion tracking
+  const [planId, setPlanId] = useState<string>('');
+  const [completedReads, setCompletedReads] = useState<Set<string>>(new Set());
+  const [completedReviews, setCompletedReviews] = useState<Set<string>>(new Set());
+
+  useEffect(() => { localStorage.setItem('chapter_weight_locale', locale); }, [locale]);
+
+  useEffect(() => {
+    if (!planId) return;
+    const key = `chapter_weight_progress_${planId}`;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const data = JSON.parse(saved);
+        setCompletedReads(new Set<string>(data.reads || []));
+        setCompletedReviews(new Set<string>(data.reviews || []));
+      } else {
+        setCompletedReads(new Set());
+        setCompletedReviews(new Set());
+      }
+    } catch { setCompletedReads(new Set()); setCompletedReviews(new Set()); }
+  }, [planId]);
+
+  function saveProgress(reads: Set<string>, reviews: Set<string>) {
+    if (!planId) return;
+    localStorage.setItem(`chapter_weight_progress_${planId}`, JSON.stringify({
+      reads: [...reads], reviews: [...reviews]
+    }));
+  }
+
+  function toggleRead(date: string) {
+    setCompletedReads(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date); else next.add(date);
+      saveProgress(next, completedReviews);
+      return next;
+    });
+  }
+
+  function toggleReview(key: string) {
+    setCompletedReviews(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      saveProgress(completedReads, next);
+      return next;
+    });
+  }
+
+  function reviewKey(r: ReviewItem) { return `${r.date}|${r.chapter}|${r.stage}`; }
 
   // File mode state
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -184,6 +363,15 @@ export function ChapterWeightTool({ onNavigate }: { onNavigate?: (tool: Tool) =>
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
+  const [selectedDay, setSelectedDay] = useState<DayPlan | null>(null);
+  const [enableSpacedRep, setEnableSpacedRep] = useState(true);
+  const [reviewSchedule, setReviewSchedule] = useState<ReviewItem[]>([]);
+
+  const CHART_COLORS = [
+    '#378ADD', '#D85A30', '#1D9E75', '#D4537E', '#7F77DD',
+    '#BA7517', '#E24B4A', '#639922', '#888780', '#E87B2D',
+    '#4B9B82', '#A05EB5', '#D4A017', '#3B7DD8', '#C0392B'
+  ];
 
   // Folder mode state
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -193,6 +381,10 @@ export function ChapterWeightTool({ onNavigate }: { onNavigate?: (tool: Tool) =>
   const [folderPlan, setFolderPlan] = useState<FolderDayPlan[]>([]);
   const [isFolderPlanGenerated, setIsFolderPlanGenerated] = useState(false);
   const [folderPagesPerDay, setFolderPagesPerDay] = useState(10);
+  const [folderViewMode, setFolderViewMode] = useState<'table' | 'calendar'>('table');
+  const [selectedFolderDay, setSelectedFolderDay] = useState<FolderDayPlan | null>(null);
+  const [enableFolderSpacedRep, setEnableFolderSpacedRep] = useState(true);
+  const [folderReviewSchedule, setFolderReviewSchedule] = useState<ReviewItem[]>([]);
 
   useEffect(() => {
     const saved = localStorage.getItem('chapter_weight_history');
@@ -291,7 +483,8 @@ export function ChapterWeightTool({ onNavigate }: { onNavigate?: (tool: Tool) =>
       const d = new Date(dateStr);
       return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     };
-    const events = plan.map(day => {
+    const pdfName = selectedFile?.split(/[/\\]/).pop() || 'Reading Plan';
+    const readingEvents = plan.map(day => {
       const start = new Date(day.date);
       start.setHours(9, 0, 0);
       const end = new Date(day.date);
@@ -301,16 +494,32 @@ UID:${crypto.randomUUID()}
 DTSTAMP:${formatDateItem(new Date().toISOString())}
 DTSTART:${formatDateItem(start.toISOString())}
 DTEND:${formatDateItem(end.toISOString())}
-SUMMARY:قراءة ${day.page_count} صفحة من ${selectedFile?.split(/[/\\]/).pop()}
-DESCRIPTION:مطلوب قراءة الفصول: ${day.chapter} \nالصفحات: ${day.pages}
+SUMMARY:📖 ${day.chapter}
+DESCRIPTION:قراءة ${day.page_count} صفحة من ${pdfName} \nالصفحات: ${day.pages}
 END:VEVENT`;
     }).join('\n');
+    const reviewEvents = reviewSchedule.map(r => {
+      const start = new Date(r.date);
+      start.setHours(18, 0, 0);
+      const end = new Date(r.date);
+      end.setHours(19, 0, 0);
+      const stageLabel = r.stage === 'sr1' ? 'مراجعة اليوم التالي' : r.stage === 'sr2' ? 'مراجعة أسبوع' : r.stage === 'sr3' ? 'مراجعة 3 أسابيع' : 'مراجعة 6 أسابيع';
+      return `BEGIN:VEVENT
+UID:${crypto.randomUUID()}
+DTSTAMP:${formatDateItem(new Date().toISOString())}
+DTSTART:${formatDateItem(start.toISOString())}
+DTEND:${formatDateItem(end.toISOString())}
+SUMMARY:🔄 ${stageLabel}: ${r.chapter}
+DESCRIPTION:مراجعة ${r.chapter} (${stageLabel})
+END:VEVENT`;
+    }).join('\n');
+    const allEvents = [readingEvents, reviewEvents].filter(Boolean).join('\n');
     const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//PDF Tools//Reading Plan//AR
 calscale:GREGORIAN
 METHOD:PUBLISH
-${events}
+${allEvents}
 END:VCALENDAR`;
     try {
       const { save } = await import('@tauri-apps/plugin-dialog');
@@ -396,6 +605,29 @@ END:VCALENDAR`;
     return chapters.reduce((sum, ch) => ch.included ? sum + ch.page_count : sum, 0);
   };
 
+  function generateReviews(planDays: DayPlan[], chs: Chapter[]): ReviewItem[] {
+    const reviews: ReviewItem[] = [];
+    if (!enableSpacedRep) return reviews;
+    const chapterDateRanges: Record<string, string> = {};
+    planDays.forEach(d => {
+      if (!chapterDateRanges[d.chapter] || d.date > chapterDateRanges[d.chapter]) {
+        chapterDateRanges[d.chapter] = d.date;
+      }
+    });
+    Object.entries(chapterDateRanges).forEach(([ch, lastDate]) => {
+      const last = new Date(lastDate);
+      const chInfo = chs.find(c => c.title === ch);
+      if (!chInfo || !chInfo.included) return;
+      [1, 8, 22, 43].forEach(daysAfter => {
+        const d = new Date(last);
+        d.setDate(d.getDate() + daysAfter);
+        const stage = daysAfter === 1 ? 'sr1' : daysAfter === 8 ? 'sr2' : daysAfter === 22 ? 'sr3' : 'sr4';
+        reviews.push({ date: d.toISOString(), chapter: ch, stage });
+      });
+    });
+    return reviews;
+  }
+
   const handleGeneratePlan = () => {
     const includedPagesTotal = getIncludedPageCount();
     if (includedPagesTotal === 0) return;
@@ -437,7 +669,11 @@ END:VCALENDAR`;
       });
       currentDate.setDate(currentDate.getDate() + 1);
     }
+    const newPlanId = crypto.randomUUID();
+    setPlanId(newPlanId);
     setPlan(generatedPlan);
+    const reviews = generateReviews(generatedPlan, chapters);
+    setReviewSchedule(reviews);
     setIsPlanGenerated(true);
     setAvailableDays(totalDays);
     saveToHistory({ startDate: startDate, pagesPerDay: pagesPerDay, availableDays: totalDays });
@@ -618,6 +854,27 @@ END:VCALENDAR`;
     });
   };
 
+  function generateFolderReviews(planDays: FolderDayPlan[]): ReviewItem[] {
+    const reviews: ReviewItem[] = [];
+    if (!enableFolderSpacedRep) return reviews;
+    const fileDateRanges: Record<string, string> = {};
+    planDays.forEach(d => {
+      if (!fileDateRanges[d.file] || d.date > fileDateRanges[d.file]) {
+        fileDateRanges[d.file] = d.date;
+      }
+    });
+    Object.entries(fileDateRanges).forEach(([file, lastDate]) => {
+      const last = new Date(lastDate);
+      [1, 8, 22, 43].forEach(daysAfter => {
+        const d = new Date(last);
+        d.setDate(d.getDate() + daysAfter);
+        const stage = daysAfter === 1 ? 'sr1' : daysAfter === 8 ? 'sr2' : daysAfter === 22 ? 'sr3' : 'sr4';
+        reviews.push({ date: d.toISOString(), chapter: file, stage });
+      });
+    });
+    return reviews;
+  }
+
   const handleGenerateFolderPlan = () => {
     if (!folderData) return;
     const allFiles = collectAllFiles(folderData.tree);
@@ -649,7 +906,11 @@ END:VCALENDAR`;
       }
     }
 
+    const newPlanId = 'folder-' + crypto.randomUUID();
+    setPlanId(newPlanId);
     setFolderPlan(plan);
+    const reviews = generateFolderReviews(plan);
+    setFolderReviewSchedule(reviews);
     setIsFolderPlanGenerated(true);
     showToast(`تم إنشاء خطة: ${withDays.length} ملفات في ${plan.length} يوم`, 'success');
   };
@@ -664,16 +925,24 @@ END:VCALENDAR`;
     <div className="h-full flex flex-col">
       <div className="mb-6 flex justify-between items-start">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">تحليل وزن الفصول</h2>
-          <p className="text-gray-500">تحليل أحجام الفصول وإنشاء خطة قراءة مخصصة</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('title')}</h2>
+          <p className="text-gray-500">{t('desc')}</p>
         </div>
-        <button
-          onClick={() => setShowHistory(!showHistory)}
-          className={`btn ${showHistory ? 'btn-primary' : 'btn-outline'} gap-2`}
-        >
-          <HistoryIcon size={18} />
-          <span>سجل العمليات</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
+            className="btn btn-ghost btn-sm px-3 text-xs font-medium text-gray-500 hover:text-indigo-600 border border-gray-200"
+          >
+            {t('localeSwitch')}
+          </button>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className={`btn ${showHistory ? 'btn-primary' : 'btn-outline'} gap-2`}
+          >
+            <HistoryIcon size={18} />
+            <span>{t('history')}</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-6 h-full overflow-hidden">
@@ -715,22 +984,22 @@ END:VCALENDAR`;
           {/* Mode Toggle */}
           <div className="card mb-6">
             <div className="flex items-center gap-4 mb-4">
-              <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
-                <button
-                  onClick={() => { setMode('file'); setIsAnalyzed(false); setIsPlanGenerated(false); setError(null); }}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${mode === 'file' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  <FileText size={16} className="inline ml-1" />
-                  ملف واحد
-                </button>
-                <button
-                  onClick={() => { setMode('folder'); setFolderError(null); }}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${mode === 'folder' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  <Folder size={16} className="inline ml-1" />
-                  مجلد + مجلدات فرعية
-                </button>
-              </div>
+                  <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
+                    <button
+                      onClick={() => { setMode('file'); setIsAnalyzed(false); setIsPlanGenerated(false); setError(null); }}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${mode === 'file' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      <FileText size={16} className="inline ml-1" />
+                      {t('fileMode')}
+                    </button>
+                    <button
+                      onClick={() => { setMode('folder'); setFolderError(null); }}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${mode === 'folder' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      <Folder size={16} className="inline ml-1" />
+                      {t('folderMode')}
+                    </button>
+                  </div>
             </div>
 
             {mode === 'file' && (
@@ -860,7 +1129,7 @@ END:VCALENDAR`;
                     <Calendar size={20} className="text-indigo-600" />
                     <h3 className="font-semibold text-gray-900">إنشاء خطة القراءة</h3>
                   </div>
-                  <div className="bg-indigo-50 p-4 rounded-xl mb-6 flex flex-wrap items-end gap-4">
+                  <div className="bg-indigo-50 p-4 rounded-xl flex flex-wrap items-end gap-4">
                     <div className="flex-1 min-w-[140px]">
                       <label className="block text-xs font-medium text-indigo-900 mb-1.5 opacity-80">تاريخ البدء</label>
                       <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input bg-white border-indigo-200 focus:border-indigo-500 h-10" />
@@ -872,6 +1141,13 @@ END:VCALENDAR`;
                     <div className="flex-1 min-w-[100px]">
                       <label className="block text-xs font-medium text-indigo-900 mb-1.5 opacity-80">الأيام المقدرة</label>
                       <input type="number" value={availableDays} onChange={(e) => { const val = parseInt(e.target.value) || 1; setAvailableDays(val); setPagesPerDay(Math.ceil(getIncludedPageCount() / val)); }} min={1} className="input bg-white border-indigo-200 focus:border-indigo-500 h-10" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked={enableSpacedRep} onChange={(e) => setEnableSpacedRep(e.target.checked)} className="sr-only peer" />
+                        <div className="w-9 h-5 bg-indigo-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                      </label>
+                      <span className="text-xs font-medium text-indigo-900">مراجعة متباعدة</span>
                     </div>
                     <button onClick={handleGeneratePlan} className="btn btn-primary h-10 px-6 gap-2 shadow-sm">
                       <Play size={18} />
@@ -911,30 +1187,86 @@ END:VCALENDAR`;
                         </div>
                       </div>
                     </div>
+
+                    {/* Legend */}
+                    <div className="flex items-center gap-4 mb-3 text-xs text-gray-500" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-sm bg-blue-100 border border-blue-300"></span>
+                        {t('firstRead')}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-sm bg-orange-100 border border-dashed border-orange-400"></span>
+                        {t('reviewDue')}
+                      </span>
+                      {reviewSchedule.length > 0 && (
+                        <span className="text-gray-400">
+                          · {reviewSchedule.length} {reviewSchedule.length === 1 ? t('reviewsScheduled') : t('reviewsScheduledPl')}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Metrics Cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                      <div className="bg-white border border-gray-100 rounded-xl p-4">
+                        <div className="text-xs text-gray-500">{t('chapters')}</div>
+                        <div className="text-2xl font-semibold text-gray-900">{chapters.filter(c => c.included).length}</div>
+                      </div>
+                      <div className="bg-white border border-gray-100 rounded-xl p-4">
+                        <div className="text-xs text-gray-500">{t('totalPages')}</div>
+                        <div className="text-2xl font-semibold text-gray-900">{getIncludedPageCount().toLocaleString()}</div>
+                      </div>
+                      <div className="bg-white border border-gray-100 rounded-xl p-4">
+                        <div className="text-xs text-gray-500">{t('planDays')}</div>
+                        <div className="text-2xl font-semibold text-gray-900">{plan.length}</div>
+                      </div>
+                      <div className="bg-white border border-gray-100 rounded-xl p-4">
+                        <div className="text-xs text-gray-500">{t('finishDate')}</div>
+                        <div className="text-2xl font-semibold text-gray-900">
+                          {plan.length > 0 ? new Date(plan[plan.length - 1].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
+                        </div>
+                      </div>
+                    </div>
+
                     {viewMode === 'table' ? (
                       <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                         <table className="w-full relative">
                           <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
                             <tr>
-                              <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">اليوم</th>
-                              <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">التاريخ</th>
-                              <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">الفصل</th>
-                              <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">الصفحات</th>
-                              <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">الكمية</th>
+                              <th className="py-3 px-4 text-sm font-medium text-gray-600 w-10"></th>
+                              <th className={`py-3 px-4 text-sm font-medium text-gray-600 ${locale === 'ar' ? 'text-right' : 'text-left'}`}>{t('day')}</th>
+                              <th className={`py-3 px-4 text-sm font-medium text-gray-600 ${locale === 'ar' ? 'text-right' : 'text-left'}`}>{t('date')}</th>
+                              <th className={`py-3 px-4 text-sm font-medium text-gray-600 ${locale === 'ar' ? 'text-right' : 'text-left'}`}>{t('chapters')}</th>
+                              <th className={`py-3 px-4 text-sm font-medium text-gray-600 ${locale === 'ar' ? 'text-right' : 'text-left'}`}>{t('pages')}</th>
+                              <th className={`py-3 px-4 text-sm font-medium text-gray-600 ${locale === 'ar' ? 'text-right' : 'text-left'}`}>{t('count')}</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {plan.map((day, index) => (
-                              <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                                <td className="py-3 px-4 font-medium text-indigo-600">اليوم {day.day}</td>
-                                <td className="py-3 px-4 text-gray-600">{new Date(day.date).toLocaleDateString('ar-SA', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
-                                <td className="py-3 px-4 text-gray-900 max-w-xs truncate" title={day.chapter}>{day.chapter}</td>
-                                <td className="py-3 px-4 text-gray-600 ltr text-right">{day.pages}</td>
-                                <td className="py-3 px-4">
-                                  <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">{day.page_count} صفحة</span>
-                                </td>
-                              </tr>
-                            ))}
+                            {plan.map((day, index) => {
+                              const dateKey = day.date.substring(0, 10);
+                              const done = completedReads.has(dateKey);
+                              return (
+                                <tr key={index} className={`border-b border-gray-100 cursor-pointer transition-colors ${done ? 'bg-green-50/50' : 'hover:bg-gray-50'}`}
+                                    onClick={() => setSelectedDay(selectedDay?.day === day.day ? null : day)}>
+                                  <td className="py-3 px-4">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); toggleRead(dateKey); }}
+                                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                        done ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'
+                                      }`}
+                                    >
+                                      {done && <CheckCircle size={12} />}
+                                    </button>
+                                  </td>
+                                  <td className={`py-3 px-4 font-medium ${done ? 'text-green-600 line-through' : 'text-indigo-600'}`}>{t('day')} {day.day}</td>
+                                  <td className={`py-3 px-4 ${done ? 'text-green-500' : 'text-gray-600'}`}>{new Date(day.date).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
+                                  <td className={`py-3 px-4 max-w-xs truncate ${done ? 'text-gray-400 line-through' : 'text-gray-900'}`} title={day.chapter}>{day.chapter}</td>
+                                  <td className={`py-3 px-4 ltr ${done ? 'text-green-400' : 'text-gray-600'}`}>{day.pages}</td>
+                                  <td className="py-3 px-4">
+                                    <span className={`px-2 py-0.5 rounded-full text-xs ${done ? 'bg-green-100 text-green-600' : 'bg-green-100 text-green-700'}`}>{day.page_count}{t('pageShort')}</span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -942,31 +1274,156 @@ END:VCALENDAR`;
                       <div className="p-4 bg-gray-50 rounded-xl max-h-[500px] overflow-y-auto custom-scrollbar">
                         {Array.from(new Set(plan.map(d => d.date.substring(0, 7)))).sort().map(monthStr => {
                           const monthDate = new Date(monthStr + '-01');
+                          const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+                          const startDow = monthDate.getDay();
+                          const lastDay = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+                          const cells: (number | null)[] = [];
+                          for (let i = 0; i < startDow; i++) cells.push(null);
+                          for (let d = 1; d <= lastDay; d++) cells.push(d);
+                          while (cells.length % 7 !== 0) cells.push(null);
+
+                          const byDate: Record<string, { reads: typeof plan; reviews: ReviewItem[] }> = {};
+                          plan.forEach(p => {
+                            const k = p.date.substring(0, 10);
+                            if (!byDate[k]) byDate[k] = { reads: [], reviews: [] };
+                            byDate[k].reads.push(p);
+                          });
+                          reviewSchedule.forEach(r => {
+                            const k = r.date.substring(0, 10);
+                            if (!byDate[k]) byDate[k] = { reads: [], reviews: [] };
+                            byDate[k].reviews.push(r);
+                          });
+
                           return (
                             <div key={monthStr} className="mb-8">
-                              <h4 className="font-bold text-gray-800 mb-3 sticky top-0 bg-gray-50 py-2 border-b border-gray-200">{monthDate.toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' })}</h4>
-                              <div className="grid grid-cols-7 gap-2 text-center text-xs dir-rtl">
-                                {['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'].map(d => <div key={d} className="text-gray-400 font-medium py-1">{d}</div>)}
-                                {Array.from({ length: new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay() }).map((_, i) => <div key={`empty-${i}`}></div>)}
-                                {(() => {
-                                  const days = [];
-                                  const lastDay = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
-                                  for (let i = 1; i <= lastDay; i++) {
-                                    const dateStr = `${monthStr}-${String(i).padStart(2, '0')}`;
-                                    const planDay = plan.find(d => d.date.startsWith(dateStr));
-                                    days.push(
-                                      <div key={i} className={`aspect-square rounded-xl flex flex-col items-center justify-center border transition-all ${planDay ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm scale-100' : 'bg-white border-gray-100 text-gray-300 scale-95'}`} title={planDay ? `${planDay.chapter} (${planDay.pages})` : ''}>
-                                        <span className="font-bold text-lg leading-none">{i}</span>
-                                        {planDay && <span className="text-[10px] opacity-80 mt-1 font-medium">{planDay.page_count} ص</span>}
+                              <h4 className="font-bold text-gray-800 mb-3 sticky top-0 bg-gray-50 py-2 border-b border-gray-200">{monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h4>
+                              <div className="grid grid-cols-7 text-xs text-gray-400 text-center mb-1">
+                                {dayNames.map(d => <div key={d} className="py-1.5 font-medium">{d}</div>)}
+                              </div>
+                              <div className="grid grid-cols-7 border border-gray-100 rounded-lg overflow-hidden">
+                                {cells.map((d, idx) => {
+                                  if (d === null) return <div key={`e-${idx}`} className="min-h-[72px] bg-white border-r border-b border-gray-50"></div>;
+                                  const dateStr = `${monthStr}-${String(d).padStart(2, '0')}`;
+                                  const dayData = byDate[dateStr];
+                                  const planDay = dayData?.reads[0] || null;
+                                  const dayReviews = dayData?.reviews || [];
+                                  const hasContent = planDay || dayReviews.length > 0;
+                                  const chapterIdx = planDay ? chapters.findIndex(ch => ch.title === planDay.chapter) : -1;
+                                  const colorIdx = chapterIdx >= 0 ? chapterIdx % CHART_COLORS.length : -1;
+                                  const isSelected = selectedDay?.date.startsWith(dateStr) ?? false;
+                                  const isReadDone = planDay ? completedReads.has(dateStr) : false;
+
+                                  return (
+                                    <button
+                                      key={d}
+                                      onClick={() => {
+                                        if (planDay) setSelectedDay(selectedDay?.day === planDay.day ? null : planDay);
+                                      }}
+                                      disabled={!hasContent}
+                                      className={`min-h-[80px] p-1 border-r border-b border-gray-50 text-left flex flex-col transition-colors ${
+                                        isSelected ? 'bg-indigo-50 ring-1 ring-indigo-300 z-10' : hasContent ? 'bg-white hover:bg-gray-50 cursor-pointer' : 'bg-gray-50/50 cursor-default'
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between mb-0.5">
+                                        <span className={`text-xs ${hasContent ? 'text-gray-500 font-medium' : 'text-gray-300'}`}>{d}</span>
+                                        {planDay && (
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); toggleRead(dateStr); }}
+                                            className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${
+                                              isReadDone ? 'bg-green-500 border-green-500' : 'border-gray-300 hover:border-green-400'
+                                            }`}
+                                          >
+                                            {isReadDone && <CheckCircle size={8} className="text-white" />}
+                                          </button>
+                                        )}
                                       </div>
-                                    );
-                                  }
-                                  return days;
-                                })()}
+                                      {planDay && colorIdx >= 0 && (
+                                        <div
+                                          className={`text-[10px] leading-tight truncate rounded-sm px-1 py-0.5 mb-0.5 ${isReadDone ? 'line-through opacity-60' : ''}`}
+                                          style={{
+                                            backgroundColor: CHART_COLORS[colorIdx] + '22',
+                                            borderLeft: `2px solid ${CHART_COLORS[colorIdx]}`,
+                                            color: CHART_COLORS[colorIdx]
+                                          }}
+                                        >
+                                          {planDay.chapter}
+                                        </div>
+                                      )}
+                                      {planDay && (
+                                        <span className={`text-[10px] ${isReadDone ? 'text-green-500' : 'text-gray-400'}`}>{planDay.page_count}{t('pageShort')}</span>
+                                      )}
+                                      {dayReviews.length > 0 && (
+                                        <div className="text-[10px] text-orange-500 flex items-center gap-1 mt-auto border-t border-dashed border-orange-200 pt-0.5">
+                                          <RotateCw size={9} />
+                                          {dayReviews.length} {t('reviewLabel')}{dayReviews.length > 1 ? 's' : ''}
+                                        </div>
+                                      )}
+                                    </button>
+                                  );
+                                })}
                               </div>
                             </div>
                           );
                         })}
+                      </div>
+                    )}
+
+                    {/* Day Detail */}
+                    {selectedDay && (
+                      <div className="mt-4 bg-white border border-gray-200 rounded-xl p-4 animate-fade-in">
+                        <div className="flex items-center gap-3 mb-3">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleRead(selectedDay.date.substring(0, 10)); }}
+                            className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${
+                              completedReads.has(selectedDay.date.substring(0, 10)) ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'
+                            }`}
+                          >
+                            {completedReads.has(selectedDay.date.substring(0, 10)) && <CheckCircle size={14} />}
+                          </button>
+                          <BookOpen size={16} className="text-indigo-500" />
+                          <h4 className={`font-semibold ${completedReads.has(selectedDay.date.substring(0, 10)) ? 'text-green-700 line-through' : 'text-gray-900'}`}>
+                            {new Date(selectedDay.date).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                          </h4>
+                          <span className="text-xs text-gray-500 mr-auto">{t('day')} {selectedDay.day}</span>
+                        </div>
+                        <div className={`flex items-center gap-3 py-2 border-b border-gray-50 ${completedReads.has(selectedDay.date.substring(0, 10)) ? 'opacity-60 line-through' : ''}`}>
+                          <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: CHART_COLORS[Math.max(0, chapters.findIndex(ch => ch.title === selectedDay.chapter)) % CHART_COLORS.length] }}></span>
+                          <span className="text-sm text-gray-800 flex-1">{selectedDay.chapter}</span>
+                          <span className="text-xs text-gray-500">{selectedDay.page_count}{t('pageShort')} · {selectedDay.pages}</span>
+                        </div>
+                        {(() => {
+                          const dateStr = selectedDay.date.substring(0, 10);
+                          const dayReviews = reviewSchedule.filter(r => r.date.startsWith(dateStr));
+                          if (dayReviews.length === 0) return null;
+                          const stageLabel: Record<string, string> = { sr1: t('revNextDay'), sr2: t('revWeek'), sr3: t('rev3Weeks'), sr4: t('rev6Weeks') };
+                          return (
+                            <div className="mt-3 space-y-2">
+                              <div className="text-xs font-medium text-orange-600 flex items-center gap-1.5">
+                                <RotateCw size={12} />
+                                {t('todayReviews')}
+                              </div>
+                              {dayReviews.map((r, i) => {
+                                const rk = reviewKey(r);
+                                const revDone = completedReviews.has(rk);
+                                return (
+                                  <div key={i} className={`flex items-center gap-3 py-1.5 border-b border-dashed border-orange-100 last:border-0 ${revDone ? 'opacity-50' : ''}`}>
+                                    <button
+                                      onClick={() => toggleReview(rk)}
+                                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${
+                                        revDone ? 'bg-orange-500 border-orange-500 text-white' : 'border-gray-300 hover:border-orange-400'
+                                      }`}
+                                    >
+                                      {revDone && <CheckCircle size={10} className="text-white" />}
+                                    </button>
+                                    <RotateCw size={12} className={`shrink-0 ${revDone ? 'text-green-500' : 'text-orange-400'}`} />
+                                    <span className={`text-sm flex-1 ${revDone ? 'text-gray-400 line-through' : 'text-gray-700'}`}>{r.chapter}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${revDone ? 'bg-green-50 text-green-500' : 'bg-orange-50 text-orange-500'}`}>{stageLabel[r.stage] || r.stage}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
@@ -1034,6 +1491,13 @@ END:VCALENDAR`;
                           تاريخ البدء
                         </label>
                         <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input bg-white border-amber-200 focus:border-amber-500 h-10" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" checked={enableFolderSpacedRep} onChange={(e) => setEnableFolderSpacedRep(e.target.checked)} className="sr-only peer" />
+                          <div className="w-9 h-5 bg-amber-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+                        </label>
+                        <span className="text-xs font-medium text-amber-900">مراجعة متباعدة</span>
                       </div>
                       <button
                         onClick={handleGenerateFolderPlan}
@@ -1112,42 +1576,265 @@ END:VCALENDAR`;
                       <div className="flex items-center gap-2">
                         <BookOpen size={20} className="text-amber-600" />
                         <h3 className="font-semibold text-gray-900">خطة القراءة - حسب الملفات</h3>
-                        <span className="text-sm text-gray-500 mr-3">{folderPlan.length} يوم</span>
                       </div>
-                      <div className="flex bg-gray-100 rounded-lg p-1 gap-1 items-center">
-                        <span className="text-xs font-medium text-gray-500 mx-1">تصدير:</span>
-                        <button className="px-3 py-1 text-xs font-medium hover:bg-white rounded shadow-sm transition-colors text-gray-700" onClick={() => handleExportFolderPlan('csv')}>CSV</button>
-                        <button className="px-3 py-1 text-xs font-medium hover:bg-white rounded shadow-sm transition-colors text-gray-700" onClick={() => handleExportFolderPlan('md')}>MD</button>
-                        <button className="px-3 py-1 text-xs font-medium hover:bg-white rounded shadow-sm transition-colors text-gray-700" onClick={() => handleExportFolderPlan('txt')}>TXT</button>
-                        <button className="px-3 py-1 text-xs font-medium hover:bg-white rounded shadow-sm transition-colors text-gray-700" onClick={() => handleExportFolderPlan('doc')}>Word</button>
+                      <div className="flex gap-4 items-center">
+                        <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
+                          <button onClick={() => setFolderViewMode('table')} className={`px-3 py-1 text-xs font-medium rounded transition-all ${folderViewMode === 'table' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>جدول</button>
+                          <button onClick={() => setFolderViewMode('calendar')} className={`px-3 py-1 text-xs font-medium rounded transition-all ${folderViewMode === 'calendar' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>تقويم</button>
+                        </div>
+                        <div className="flex bg-gray-100 rounded-lg p-1 gap-1 items-center">
+                          <span className="text-xs font-medium text-gray-500 mx-1">تصدير:</span>
+                          <button className="px-3 py-1 text-xs font-medium hover:bg-white rounded shadow-sm transition-colors text-gray-700" onClick={() => handleExportFolderPlan('csv')}>CSV</button>
+                          <button className="px-3 py-1 text-xs font-medium hover:bg-white rounded shadow-sm transition-colors text-gray-700" onClick={() => handleExportFolderPlan('md')}>MD</button>
+                          <button className="px-3 py-1 text-xs font-medium hover:bg-white rounded shadow-sm transition-colors text-gray-700" onClick={() => handleExportFolderPlan('txt')}>TXT</button>
+                          <button className="px-3 py-1 text-xs font-medium hover:bg-white rounded shadow-sm transition-colors text-gray-700" onClick={() => handleExportFolderPlan('doc')}>Word</button>
+                        </div>
                       </div>
                     </div>
-                    <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
-                      <table className="w-full relative">
-                        <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
-                          <tr>
-                            <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">اليوم</th>
-                            <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">التاريخ</th>
-                            <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">الملف</th>
-                            <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">الصفحات</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {folderPlan.map((day, index) => (
-                            <tr key={index} className="border-b border-gray-100 hover:bg-amber-50">
-                              <td className="py-3 px-4 font-medium text-amber-600">اليوم {day.day}</td>
-                              <td className="py-3 px-4 text-gray-600">
-                                {new Date(day.date).toLocaleDateString('ar-SA', { weekday: 'short', month: 'short', day: 'numeric' })}
-                              </td>
-                              <td className="py-3 px-4 text-gray-900 max-w-xs truncate" title={day.file}>{day.file}</td>
-                              <td className="py-3 px-4">
-                                <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">{day.page_count} صفحة</span>
-                              </td>
+
+                    {/* Folder Legend */}
+                    <div className="flex items-center gap-4 mb-3 text-xs text-gray-500" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-sm bg-blue-100 border border-blue-300"></span>
+                        {t('firstRead')}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-sm bg-orange-100 border border-dashed border-orange-400"></span>
+                        {t('reviewDue')}
+                      </span>
+                      {folderReviewSchedule.length > 0 && (
+                        <span className="text-gray-400">
+                          · {folderReviewSchedule.length} {folderReviewSchedule.length === 1 ? t('reviewsScheduled') : t('reviewsScheduledPl')}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Folder Metrics */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                      <div className="bg-white border border-amber-100 rounded-xl p-4">
+                        <div className="text-xs text-gray-500">{t('files')}</div>
+                        <div className="text-2xl font-semibold text-gray-900">{new Set(folderPlan.map(d => d.file)).size}</div>
+                      </div>
+                      <div className="bg-white border border-amber-100 rounded-xl p-4">
+                        <div className="text-xs text-gray-500">{t('totalPages')}</div>
+                        <div className="text-2xl font-semibold text-gray-900">{folderPlan.reduce((s, d) => s + d.page_count, 0).toLocaleString()}</div>
+                      </div>
+                      <div className="bg-white border border-amber-100 rounded-xl p-4">
+                        <div className="text-xs text-gray-500">{t('planDays')}</div>
+                        <div className="text-2xl font-semibold text-gray-900">{folderPlan.length}</div>
+                      </div>
+                      <div className="bg-white border border-amber-100 rounded-xl p-4">
+                        <div className="text-xs text-gray-500">{t('finishDate')}</div>
+                        <div className="text-2xl font-semibold text-gray-900">
+                          {new Date(folderPlan[folderPlan.length - 1].date).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {folderViewMode === 'table' ? (
+                      <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                        <table className="w-full relative">
+                          <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+                            <tr>
+                              <th className="py-3 px-4 text-sm font-medium text-gray-600 w-10"></th>
+                              <th className={`py-3 px-4 text-sm font-medium text-gray-600 ${locale === 'ar' ? 'text-right' : 'text-left'}`}>{t('day')}</th>
+                              <th className={`py-3 px-4 text-sm font-medium text-gray-600 ${locale === 'ar' ? 'text-right' : 'text-left'}`}>{t('date')}</th>
+                              <th className={`py-3 px-4 text-sm font-medium text-gray-600 ${locale === 'ar' ? 'text-right' : 'text-left'}`}>{t('file')}</th>
+                              <th className={`py-3 px-4 text-sm font-medium text-gray-600 ${locale === 'ar' ? 'text-right' : 'text-left'}`}>{t('pages')}</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {folderPlan.map((day, index) => {
+                              const allFiles = [...new Set(folderPlan.map(d => d.file))];
+                              const fileIdx = allFiles.indexOf(day.file);
+                              const dateKey = day.date.substring(0, 10);
+                              const done = completedReads.has(dateKey);
+                              return (
+                                <tr key={index} className={`border-b border-gray-100 cursor-pointer transition-colors ${done ? 'bg-green-50/50' : 'hover:bg-amber-50'}`}
+                                    onClick={() => setSelectedFolderDay(selectedFolderDay?.day === day.day ? null : day)}>
+                                  <td className="py-3 px-4">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); toggleRead(dateKey); }}
+                                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                        done ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'
+                                      }`}
+                                    >
+                                      {done && <CheckCircle size={12} />}
+                                    </button>
+                                  </td>
+                                  <td className={`py-3 px-4 font-medium ${done ? 'text-green-600 line-through' : 'text-amber-600'}`}>{t('day')} {day.day}</td>
+                                  <td className={`py-3 px-4 ${done ? 'text-green-500' : 'text-gray-600'}`}>
+                                    {new Date(day.date).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                  </td>
+                                  <td className={`py-3 px-4 max-w-xs truncate flex items-center gap-2 ${done ? 'text-gray-400 line-through' : 'text-gray-900'}`} title={day.file}>
+                                    <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: CHART_COLORS[fileIdx % CHART_COLORS.length] }}></span>
+                                    {day.file}
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <span className={`px-2 py-0.5 rounded-full text-xs ${done ? 'bg-green-100 text-green-600' : 'bg-green-100 text-green-700'}`}>{day.page_count}{t('pageShort')}</span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-gray-50 rounded-xl max-h-[500px] overflow-y-auto custom-scrollbar">
+                        {Array.from(new Set(folderPlan.map(d => d.date.substring(0, 7)))).sort().map(monthStr => {
+                          const monthDate = new Date(monthStr + '-01');
+                          const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+                          const startDow = monthDate.getDay();
+                          const lastDay = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+                          const cells: (number | null)[] = [];
+                          for (let i = 0; i < startDow; i++) cells.push(null);
+                          for (let d = 1; d <= lastDay; d++) cells.push(d);
+                          while (cells.length % 7 !== 0) cells.push(null);
+                          const allFiles = [...new Set(folderPlan.map(d => d.file))];
+
+                          const byDate: Record<string, { reads: typeof folderPlan; reviews: ReviewItem[] }> = {};
+                          folderPlan.forEach(p => {
+                            const k = p.date.substring(0, 10);
+                            if (!byDate[k]) byDate[k] = { reads: [], reviews: [] };
+                            byDate[k].reads.push(p);
+                          });
+                          folderReviewSchedule.forEach(r => {
+                            const k = r.date.substring(0, 10);
+                            if (!byDate[k]) byDate[k] = { reads: [], reviews: [] };
+                            byDate[k].reviews.push(r);
+                          });
+
+                          return (
+                            <div key={monthStr} className="mb-8">
+                              <h4 className="font-bold text-gray-800 mb-3 sticky top-0 bg-gray-50 py-2 border-b border-gray-200">{monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h4>
+                              <div className="grid grid-cols-7 text-xs text-gray-400 text-center mb-1">
+                                {dayNames.map(d => <div key={d} className="py-1.5 font-medium">{d}</div>)}
+                              </div>
+                              <div className="grid grid-cols-7 border border-gray-100 rounded-lg overflow-hidden">
+                                {cells.map((d, idx) => {
+                                  if (d === null) return <div key={`e-${idx}`} className="min-h-[72px] bg-white border-r border-b border-gray-50"></div>;
+                                  const dateStr = `${monthStr}-${String(d).padStart(2, '0')}`;
+                                  const dayData = byDate[dateStr];
+                                  const planDay = dayData?.reads?.[0] || null;
+                                  const dayReviews = dayData?.reviews || [];
+                                  const hasContent = planDay || dayReviews.length > 0;
+                                  const fileIdx = planDay ? allFiles.indexOf(planDay.file) : -1;
+                                  const isSelected = selectedFolderDay?.date.startsWith(dateStr) ?? false;
+                                  const isReadDone = planDay ? completedReads.has(dateStr) : false;
+
+                                  return (
+                                    <button
+                                      key={d}
+                                      onClick={() => {
+                                        if (planDay) setSelectedFolderDay(selectedFolderDay?.day === planDay.day ? null : planDay);
+                                      }}
+                                      disabled={!hasContent}
+                                      className={`min-h-[80px] p-1 border-r border-b border-gray-50 text-left flex flex-col transition-colors ${
+                                        isSelected ? 'bg-amber-50 ring-1 ring-amber-300 z-10' : hasContent ? 'bg-white hover:bg-amber-50 cursor-pointer' : 'bg-gray-50/50 cursor-default'
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between mb-0.5">
+                                        <span className={`text-xs ${hasContent ? 'text-gray-500 font-medium' : 'text-gray-300'}`}>{d}</span>
+                                        {planDay && (
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); toggleRead(dateStr); }}
+                                            className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${
+                                              isReadDone ? 'bg-green-500 border-green-500' : 'border-gray-300 hover:border-green-400'
+                                            }`}
+                                          >
+                                            {isReadDone && <CheckCircle size={8} className="text-white" />}
+                                          </button>
+                                        )}
+                                      </div>
+                                      {planDay && fileIdx >= 0 && (
+                                        <div
+                                          className={`text-[10px] leading-tight truncate rounded-sm px-1 py-0.5 mb-0.5 ${isReadDone ? 'line-through opacity-60' : ''}`}
+                                          style={{
+                                            backgroundColor: CHART_COLORS[fileIdx % CHART_COLORS.length] + '22',
+                                            borderLeft: `2px solid ${CHART_COLORS[fileIdx % CHART_COLORS.length]}`,
+                                            color: CHART_COLORS[fileIdx % CHART_COLORS.length]
+                                          }}
+                                        >
+                                          {planDay.file}
+                                        </div>
+                                      )}
+                                      {planDay && (
+                                        <span className={`text-[10px] ${isReadDone ? 'text-green-500' : 'text-gray-400'}`}>{planDay.page_count}{t('pageShort')}</span>
+                                      )}
+                                      {dayReviews.length > 0 && (
+                                        <div className="text-[10px] text-orange-500 flex items-center gap-1 mt-auto border-t border-dashed border-orange-200 pt-0.5">
+                                          <RotateCw size={9} />
+                                          {dayReviews.length} {t('reviewLabel')}{dayReviews.length > 1 ? 's' : ''}
+                                        </div>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Folder Day Detail */}
+                    {selectedFolderDay && (
+                      <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4 animate-fade-in">
+                        <div className="flex items-center gap-3 mb-2">
+                          <button
+                            onClick={() => toggleRead(selectedFolderDay.date.substring(0, 10))}
+                            className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${
+                              completedReads.has(selectedFolderDay.date.substring(0, 10)) ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'
+                            }`}
+                          >
+                            {completedReads.has(selectedFolderDay.date.substring(0, 10)) && <CheckCircle size={14} />}
+                          </button>
+                          <BookOpen size={16} className="text-amber-600" />
+                          <h4 className={`font-semibold ${completedReads.has(selectedFolderDay.date.substring(0, 10)) ? 'text-green-700 line-through' : 'text-gray-900'}`}>
+                            {new Date(selectedFolderDay.date).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                          </h4>
+                          <span className="text-xs text-gray-500 mr-auto">{t('day')} {selectedFolderDay.day}</span>
+                        </div>
+                        <div className={`flex items-center gap-3 py-2 border-b border-amber-100 ${completedReads.has(selectedFolderDay.date.substring(0, 10)) ? 'opacity-60 line-through' : ''}`}>
+                          <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: CHART_COLORS[[...new Set(folderPlan.map(d => d.file))].indexOf(selectedFolderDay.file) % CHART_COLORS.length] }}></span>
+                          <span className="text-sm text-gray-800 flex-1">{selectedFolderDay.file}</span>
+                          <span className="text-xs text-gray-500">{selectedFolderDay.page_count}{t('pageShort')}</span>
+                        </div>
+                        {(() => {
+                          const dateStr = selectedFolderDay.date.substring(0, 10);
+                          const dayReviews = folderReviewSchedule.filter(r => r.date.startsWith(dateStr));
+                          if (dayReviews.length === 0) return null;
+                          const stageLabel: Record<string, string> = { sr1: t('revNextDay'), sr2: t('revWeek'), sr3: t('rev3Weeks'), sr4: t('rev6Weeks') };
+                          return (
+                            <div className="mt-3 space-y-2">
+                              <div className="text-xs font-medium text-orange-600 flex items-center gap-1.5">
+                                <RotateCw size={12} />
+                                {t('todayReviews')}
+                              </div>
+                              {dayReviews.map((r, i) => {
+                                const rk = reviewKey(r);
+                                const revDone = completedReviews.has(rk);
+                                return (
+                                  <div key={i} className={`flex items-center gap-3 py-1.5 border-b border-dashed border-orange-100 last:border-0 ${revDone ? 'opacity-50' : ''}`}>
+                                    <button
+                                      onClick={() => toggleReview(rk)}
+                                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${
+                                        revDone ? 'bg-orange-500 border-orange-500 text-white' : 'border-gray-300 hover:border-orange-400'
+                                      }`}
+                                    >
+                                      {revDone && <CheckCircle size={10} className="text-white" />}
+                                    </button>
+                                    <RotateCw size={12} className={`shrink-0 ${revDone ? 'text-green-500' : 'text-orange-400'}`} />
+                                    <span className={`text-sm flex-1 ${revDone ? 'text-gray-400 line-through' : 'text-gray-700'}`}>{r.chapter}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${revDone ? 'bg-green-50 text-green-500' : 'bg-orange-50 text-orange-500'}`}>{stageLabel[r.stage] || r.stage}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 )}
               </>
