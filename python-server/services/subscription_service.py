@@ -171,22 +171,31 @@ class SubscriptionService:
         )
 
     def _get_features(self, plan: PlanType, status: SubscriptionStatus) -> list[str]:
-        # Basic features available to everyone (Free or Expired)
+        all_features = [
+            "basic_reading", "pdf_merge", "pdf_split", "pdf_compress",
+            "pdf_extract_images", "fast_reading", "text_extract", "tahweel",
+            "watermark_edit", "remove_security", "pro_stats", "sync",
+            "batch_processing", "priority_support", "beta_access"
+        ]
+
+        # When DEV_MODE is set, unlock everything
+        if os.getenv('DEV_MODE'):
+            return all_features
+
         base_features = ["basic_reading", "pdf_merge", "pdf_split", "pdf_compress", "pdf_extract_images"]
-        
+
         if status != SubscriptionStatus.ACTIVE:
             return base_features
-        
+
         if plan == PlanType.FREE:
             return base_features
-        elif plan == PlanType.TRIAL:
-            # Trial gets everything for 30 days
-            return base_features + ["fast_reading", "text_extract", "tahweel", "watermark_edit", "remove_security", "pro_stats", "sync", "batch_processing"]
-        elif plan == PlanType.MONTHLY or plan == PlanType.YEARLY:
-            return base_features + ["fast_reading", "text_extract", "tahweel", "watermark_edit", "remove_security", "pro_stats", "sync", "batch_processing"]
+        elif plan in (PlanType.TRIAL, PlanType.MONTHLY, PlanType.YEARLY):
+            premium = ["fast_reading", "text_extract", "tahweel", "watermark_edit", "remove_security", "pro_stats", "sync", "batch_processing"]
+            return base_features + premium
         elif plan == PlanType.LIFETIME:
-            return base_features + ["fast_reading", "text_extract", "tahweel", "watermark_edit", "remove_security", "pro_stats", "sync", "batch_processing", "priority_support", "beta_access"]
-        
+            premium = ["fast_reading", "text_extract", "tahweel", "watermark_edit", "remove_security", "pro_stats", "sync", "batch_processing"]
+            return base_features + premium + ["priority_support", "beta_access"]
+
         return base_features
 
 subscription_service = SubscriptionService()

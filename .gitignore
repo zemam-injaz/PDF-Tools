@@ -42,3 +42,6 @@ python-server/credentials.json
 .env
 *.env.local
 .credentials/
+
+null
+.null

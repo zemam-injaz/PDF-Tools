@@ -81,6 +81,8 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     isLoading,
     daysRemaining,
     checkAccess: (feature: string) => {
+        // Unlock everything during development
+        if (import.meta.env.VITE_DEV_MODE) return true;
         // While loading, grant optimistic access to prevent flash of lock screen
         if (isLoading) return true;
         if (!data) return false;

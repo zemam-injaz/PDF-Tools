@@ -2,12 +2,13 @@ import React from 'react';
 import { 
   FileText, Menu, LayoutDashboard, Files, Split, Minimize2, Image, 
   Type, BookOpen, Layers, Stamp, Shield, Library, MessageSquare, 
-  BarChart3, Zap, Crown, AlertCircle, Clock, RotateCw, Trash2, FileOutput
+  BarChart3, Zap, Crown, AlertCircle, Clock, RotateCw, Trash2, FileOutput,
+  Crop, Contrast, Hash, EyeOff, Table2
 } from 'lucide-react';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { PricingPage } from '../pricing/PricingPage';
 
-export type Tool = 'merge' | 'split' | 'compress' | 'extract' | 'text' | 'bookmark' | 'rotate' | 'delete' | 'extract-pages' | 'watermark' | 'security' | 'library' | 'comments' | 'chapter-weight' | 'reading-speed' | 'images-to-pdf' | 'pdf-to-images' | 'metadata' | 'tahweel' | 'privacy' | 'terms' | null;
+export type Tool = 'merge' | 'split' | 'compress' | 'extract' | 'text' | 'bookmark' | 'rotate' | 'delete' | 'extract-pages' | 'watermark' | 'security' | 'library' | 'comments' | 'chapter-weight' | 'reading-speed' | 'images-to-pdf' | 'pdf-to-images' | 'metadata' | 'tahweel' | 'clean-pdf' | 'invert-colors' | 'crop-pdf' | 'page-numbers' | 'redact-pdf' | 'extract-tables' | 'markdown-to-pdf' | 'privacy' | 'terms' | null;
 
 interface SidebarProps {
   activeTool: Tool;
@@ -44,8 +45,15 @@ const navItems: NavItem[] = [
     { id: 'watermark', label: 'علامة مائية', icon: Stamp, section: 'main' },
     { id: 'security', label: 'إزالة الحماية', icon: Shield, section: 'main' },
   { id: 'images-to-pdf', label: 'صور إلى PDF', icon: Image, section: 'main' },
+  { id: 'markdown-to-pdf', label: 'Markdown إلى PDF', icon: FileText, section: 'main' },
   { id: 'pdf-to-images', label: 'PDF إلى صور', icon: Image, section: 'main' },
   { id: 'metadata', label: 'تعديل الوصف', icon: FileText, section: 'main' },
+  { id: 'clean-pdf', label: 'تنظيف PDF', icon: Layers, section: 'main' },
+  { id: 'invert-colors', label: 'عكس الألوان', icon: Contrast, section: 'main' },
+  { id: 'crop-pdf', label: 'قص PDF', icon: Crop, section: 'main' },
+  { id: 'page-numbers', label: 'أرقام الصفحات', icon: Hash, section: 'main' },
+  { id: 'redact-pdf', label: 'تعتيم PDF', icon: EyeOff, section: 'main' },
+  { id: 'extract-tables', label: 'استخراج الجداول', icon: Table2, section: 'main' },
 ];
 
 export function Sidebar({ activeTool, setActiveTool, isCollapsed, setIsCollapsed }: SidebarProps) {

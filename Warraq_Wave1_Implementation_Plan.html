@@ -1,0 +1,2178 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title></title>
+	<meta name="generator" content="LibreOffice 26.2.4.2 (Windows)"/>
+	<meta name="author" content="Un-named"/>
+	<meta name="created" content="2026-06-24T19:10:35.362000000"/>
+	<meta name="changed" content="2026-06-26T17:57:42.597356400"/>
+	<style type="text/css">
+		@page { size: 8.5in 11in; margin-left: 0.75in; margin-right: 0.75in; margin-top: 0.49in; margin-bottom: 0.49in }
+		p { direction: ltr; line-height: 115%; text-align: left; orphans: 2; margin-bottom: 0.1in; widows: 2; background: transparent }
+		a:link { color: #0563c1; text-decoration: underline }
+	</style>
+</head>
+<body lang="en-US" link="#0563c1" vlink="#800000" dir="ltr">
+<div title="header">
+	<table width="672" cellpadding="5" cellspacing="0">
+		<col width="326"/>
+		<col width="326"/>
+		<tr valign="top">
+			<td width="326" bgcolor="#ffffff" style="background: #ffffff; border-top: none; border-bottom: 1.00pt solid #1a56db; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in"><p align="left">
+				<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Warraq
+				(</b></font></font><font face="Calibri"><span lang="hi-IN"><font face="Calibri"><font size="2" style="font-size: 9pt"><b>وراق</b></font></font></span></font><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>)
+				— Feature Implementation Plan</b></font></font></font></p>
+			</td>
+			<td width="326" bgcolor="#ffffff" style="background: #ffffff; border-top: none; border-bottom: 1.00pt solid #1a56db; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in"><p align="right">
+				<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Wave
+				1 · Weeks 1–2</font></font></font></p>
+			</td>
+		</tr>
+	</table>
+</div>
+<table width="672" cellpadding="8" cellspacing="0">
+	<col width="654"/>
+	<tr>
+		<td width="654" valign="top" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.28in 0.08in"><p align="center" style="margin-top: 0.14in; margin-bottom: 0.06in">
+			<font face="Calibri"><span lang="hi-IN"><font color="#ffffff"><font face="Calibri"><font size="7" style="font-size: 36pt"><b>وراق</b></font></font></font></span></font></p>
+			<p align="center" style="margin-bottom: 0.08in"><font color="#ffffff"><font face="Calibri, serif"><font size="5" style="font-size: 20pt"><b>Warraq
+			— Feature Implementation Plan</b></font></font></font></p>
+			<p align="center" style="margin-bottom: 0.06in"><font color="#aaccff"><font face="Calibri, serif"><font size="2" style="font-size: 11pt">Wave
+			1: Crop PDF · Page Numbers · Invert Colors · PDF to Excel ·
+			Redact · Flatten</font></font></font></p>
+			<p align="center"><font color="#7799cc"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Stack:
+			Tauri v2 · React 19 · FastAPI · PyMuPDF</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.11in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #1a56db; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#1a56db"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Wave
+1 overview</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="21"/>
+	<col width="203"/>
+	<col width="83"/>
+	<col width="43"/>
+	<col width="89"/>
+	<col width="122"/>
+	<tr valign="top">
+		<td width="21" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>#</b></font></font></font></p>
+		</td>
+		<td width="203" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Feature</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Library</b></font></font></font></p>
+		</td>
+		<td width="43" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Days</b></font></font></font></p>
+		</td>
+		<td width="89" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Plan
+			tier</b></font></font></font></p>
+		</td>
+		<td width="122" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Priority
+			driver</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="21" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>2</b></font></font></font></p>
+		</td>
+		<td width="203" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Crop
+			PDF</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">PyMuPDF</font></font></font></p>
+		</td>
+		<td width="43" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>2</b></font></font></font></p>
+		</td>
+		<td width="89" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pro</font></font></font></p>
+		</td>
+		<td width="122" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Commonly
+			requested</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="21" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>3</b></font></font></font></p>
+		</td>
+		<td width="203" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Page
+			Numbers / Header-Footer</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">PyMuPDF
+			+ font</font></font></font></p>
+		</td>
+		<td width="43" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>3</b></font></font></font></p>
+		</td>
+		<td width="89" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pro</font></font></font></p>
+		</td>
+		<td width="122" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">RTL
+			critical</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="21" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>4</b></font></font></font></p>
+		</td>
+		<td width="203" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Invert
+			Colors</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">PyMuPDF
+			pixmap</font></font></font></p>
+		</td>
+		<td width="43" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>1</b></font></font></font></p>
+		</td>
+		<td width="89" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pro</font></font></font></p>
+		</td>
+		<td width="122" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Student
+			night reading</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="21" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>5</b></font></font></font></p>
+		</td>
+		<td width="203" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>PDF
+			to Excel / Extract Tables</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">pdfplumber</font></font></font></p>
+		</td>
+		<td width="43" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>6</b></font></font></font></p>
+		</td>
+		<td width="89" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pro</font></font></font></p>
+		</td>
+		<td width="122" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">MENA
+			tabular data pain</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="21" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>6</b></font></font></font></p>
+		</td>
+		<td width="203" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Redact
+			PDF</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">PyMuPDF
+			annot</font></font></font></p>
+		</td>
+		<td width="43" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>4</b></font></font></font></p>
+		</td>
+		<td width="89" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pro</font></font></font></p>
+		</td>
+		<td width="122" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Gov
+			/ legal / medical</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="21" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>7</b></font></font></font></p>
+		</td>
+		<td width="203" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Flatten
+			+ Remove Annotations</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">PyMuPDF</font></font></font></p>
+		</td>
+		<td width="43" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>2</b></font></font></font></p>
+		</td>
+		<td width="89" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pro
+			/ Free</font></font></font></p>
+		</td>
+		<td width="122" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Completes
+			annot suite</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="21" bgcolor="#ebf5ff" style="background: #ebf5ff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<br/>
+
+			</p>
+		</td>
+		<td width="203" bgcolor="#ebf5ff" style="background: #ebf5ff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>TOTAL</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#ebf5ff" style="background: #ebf5ff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280">—</font></p>
+		</td>
+		<td width="43" bgcolor="#ebf5ff" style="background: #ebf5ff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>18
+			days</b></font></font></font></p>
+		</td>
+		<td width="89" bgcolor="#ebf5ff" style="background: #ebf5ff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280">—</font></p>
+		</td>
+		<td width="122" bgcolor="#ebf5ff" style="background: #ebf5ff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Full
+			Pro MVP</b></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.11in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="7" cellspacing="0">
+	<col width="18"/>
+	<col width="578"/>
+	<tr>
+		<td width="18" bgcolor="#ebf5ff" style="background: #ebf5ff; border: none; padding: 0in"><p align="left">
+			<font color="#1a56db">ℹ</font></p>
+		</td>
+		<td width="578" valign="top" bgcolor="#ebf5ff" style="background: #ebf5ff; border-top: none; border-bottom: none; border-left: 1.00pt solid #1a56db; border-right: none; padding-top: 0in; padding-bottom: 0in; padding-left: 0.11in; padding-right: 0in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">All
+			features gate behind the Pro plan via the existing React
+			feature-flag context. Each feature ships with its own FastAPI
+			endpoint and a new tool card in the sidebar.</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.17in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="33"/>
+	<col width="414"/>
+	<col width="83"/>
+	<col width="54"/>
+	<tr>
+		<td width="33" bgcolor="#1a56db" style="background: #1a56db; border: none; padding: 0in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="3" style="font-size: 12pt"><b>#2</b></font></font></font></p>
+		</td>
+		<td width="414" bgcolor="#1a56db" style="background: #1a56db; border: none; padding: 0in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="3" style="font-size: 12pt"><b>Crop
+			PDF</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#1a56db" style="background: #1a56db; border: none; padding: 0in"><p align="left" style="margin-bottom: 0in">
+			<font color="#bbbbbb"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Estimate</font></font></font></p>
+			<p align="left"><font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>2
+			days</b></font></font></font></p>
+		</td>
+		<td width="54" bgcolor="#1a56db" style="background: #1a56db; border: none; padding: 0in"><p align="left" style="margin-bottom: 0in">
+			<font color="#bbbbbb"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Plan</font></font></font></p>
+			<p align="left"><font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Pro</b></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #374151; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#374151"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Why
+build this now</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Crop
+is one of the top-requested PDF tools globally and already unblocked
+in PyMuPDF. The only missing piece is a visual crop UI and the
+exposed endpoint. Positioned as Pro to drive upgrades from free-tier
+users who need it for scanned documents.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #0694a2; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#0694a2"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Backend
+— FastAPI / PyMuPDF</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="8" cellspacing="0">
+	<col width="606"/>
+	<tr>
+		<td width="606" valign="top" bgcolor="#f1f5f9" style="background: #f1f5f9; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; border-left: 1.50pt solid #1a56db; border-right: 1px solid #e5e7eb; padding-top: 0.08in; padding-bottom: 0.08in; padding-left: 0.14in; padding-right: 0.08in"><p style="margin-bottom: 0.03in">
+			<font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			POST /api/pdf/crop</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Body: { file: UploadFile, pages: list[int] | None, x0, y0, x1, y1:
+			float }</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">import
+			fitz  # PyMuPDF</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">def
+			crop_pdf(data: bytes, rect: fitz.Rect, pages: list[int] | None) -&gt;
+			bytes:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">doc
+			= fitz.open(stream=data, filetype='pdf')</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			i, page in enumerate(doc):</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">if
+			pages is None or i in pages:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">page.set_mediabox(rect)
+			  # non-destructive crop</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Optional: also set CropBox for viewer compatibility</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">page.set_cropbox(rect)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">buf
+			= io.BytesIO()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">   
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">doc.save(buf,
+			garbage=4, deflate=True)</font></font></font></p>
+			<p><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">return
+			buf.getvalue()</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">The
+set_mediabox call is non-destructive — the original page content is
+preserved outside the crop rectangle and can be restored by setting a
+new mediabox. Expose a 'restore original' option by storing original
+page dimensions in the response metadata.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #6c2bd9; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#6c2bd9"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Frontend
+— React (Tauri)</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Render
+the first page as a PNG thumbnail (you already have PDF→Images).
+Overlay a draggable/resizable crop rectangle using CSS resize or a
+lightweight library (react-rnd). On confirm, POST the pixel
+coordinates converted to PDF units (pt). Show a before/after
+comparison in the result panel.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #374151; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#374151"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Deliverables
+checklist</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="146"/>
+	<col width="145"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Task</b></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Layer</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Notes</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">POST
+			/api/pdf/crop endpoint</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">PyMuPDF
+			set_mediabox + set_cropbox</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Coordinate
+			conversion (px → pt)</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Use
+			page.rect dimensions</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Crop
+			rectangle overlay UI</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">react-rnd
+			or CSS resize</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Page
+			selector (crop all / specific pages)</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Re-use
+			Visual Page Selector</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Result
+			preview + download</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Re-use
+			existing preview component</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pro
+			feature gate</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">useFeatureFlag('crop_pdf')</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="7" cellspacing="0">
+	<col width="18"/>
+	<col width="578"/>
+	<tr>
+		<td width="18" bgcolor="#fdf6b2" style="background: #fdf6b2; border: none; padding: 0in"><p align="left">
+			<font color="#c27803">⚠</font></p>
+		</td>
+		<td width="578" valign="top" bgcolor="#fdf6b2" style="background: #fdf6b2; border-top: none; border-bottom: none; border-left: 1.00pt solid #c27803; border-right: none; padding-top: 0in; padding-bottom: 0in; padding-left: 0.11in; padding-right: 0in"><p align="left">
+			<font color="#c27803"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">set_mediabox
+			alone may not be honored by all PDF viewers. Also call
+			set_cropbox(rect) on each page to ensure compatibility with Adobe
+			Reader and browser viewers.</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.11in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="33"/>
+	<col width="414"/>
+	<col width="83"/>
+	<col width="54"/>
+	<tr>
+		<td width="33" bgcolor="#0694a2" style="background: #0694a2; border: none; padding: 0in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="3" style="font-size: 12pt"><b>#3</b></font></font></font></p>
+		</td>
+		<td width="414" bgcolor="#0694a2" style="background: #0694a2; border: none; padding: 0in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="3" style="font-size: 12pt"><b>Page
+			Numbers / Header &amp; Footer</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#0694a2" style="background: #0694a2; border: none; padding: 0in"><p align="left" style="margin-bottom: 0in">
+			<font color="#bbbbbb"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Estimate</font></font></font></p>
+			<p align="left"><font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>3
+			days</b></font></font></font></p>
+		</td>
+		<td width="54" bgcolor="#0694a2" style="background: #0694a2; border: none; padding: 0in"><p align="left" style="margin-bottom: 0in">
+			<font color="#bbbbbb"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Plan</font></font></font></p>
+			<p align="left"><font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Pro</b></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #374151; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#374151"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Why
+build this now</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">RTL
+page numbering is uniquely valuable to Arabic users — no free tool
+handles right-aligned Arabic numerals correctly. This is a strong Pro
+differentiator because Western tools like iLovePDF offer it in
+English only. Bundling an Arabic font (Noto Naskh Arabic) makes this
+the only tool Arabic users trust for this task.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #0694a2; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#0694a2"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Backend
+— FastAPI / PyMuPDF</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="8" cellspacing="0">
+	<col width="606"/>
+	<tr>
+		<td width="606" valign="top" bgcolor="#f1f5f9" style="background: #f1f5f9; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; border-left: 1.50pt solid #1a56db; border-right: 1px solid #e5e7eb; padding-top: 0.08in; padding-bottom: 0.08in; padding-left: 0.14in; padding-right: 0.08in"><p style="margin-bottom: 0.03in">
+			<font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			POST /api/pdf/add-page-numbers</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Body: { position:
+			'bottom-right'|'bottom-left'|'bottom-center'|'top-right'...</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			        format: '{n}'|'{n} / {total}'|'Page {n}',</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			        font: 'NotoNaskhArabic'|'Helvetica',</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			        size: float, color: [r,g,b], start_from: int, rtl: bool }</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">FONT_PATH
+			= Path('assets/fonts/NotoNaskhArabic-Regular.ttf')</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">def
+			add_page_numbers(data: bytes, opts: PageNumOptions) -&gt; bytes:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">doc
+			= fitz.open(stream=data, filetype='pdf')</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">total
+			= len(doc)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			i, page in enumerate(doc):</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">n
+			= i + opts.start_from</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">       
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">text
+			= opts.format.replace('{n}', str(n)).replace('{total}',
+			str(total))</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">       
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">rect
+			= page.rect</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Position mapping</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">       
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">positions
+			= {</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">'bottom-right':
+			 fitz.Point(rect.width - 72, rect.height - 36),</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">'bottom-left':
+			  fitz.Point(36, rect.height - 36),</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">'bottom-center':
+			fitz.Point(rect.width / 2, rect.height - 36),</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">'top-right':
+			    fitz.Point(rect.width - 72, 36),</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">}</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">       
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">page.insert_text(</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">positions[opts.position],</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">text,</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">fontfile=str(FONT_PATH)
+			if opts.rtl else None,</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">fontname='NotoNaskhArabic'
+			if opts.rtl else 'Helvetica',</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">fontsize=opts.size,</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">color=tuple(c/255
+			for c in opts.color),</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">render_mode=0,</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">buf
+			= io.BytesIO()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">   
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">doc.save(buf,
+			garbage=4, deflate=True)</font></font></font></p>
+			<p><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">return
+			buf.getvalue()</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Bundle
+Noto Naskh Arabic (OFL license, free) in your assets/fonts/
+directory. For header/footer text beyond page numbers, use
+insert_text() on a header/footer region (top 60pt or bottom 60pt of
+each page). Provide a text template field with {n}, {total}, {date}
+substitution variables.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #6c2bd9; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#6c2bd9"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Frontend
+— React (Tauri)</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">UI:
+position picker (visual diagram of 8 positions), font selector
+(Arabic / Latin), number format dropdown, start page and start number
+inputs, color picker, live preview showing the first page with
+numbering applied. RTL toggle auto-selects Arabic font and flips
+alignment.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #374151; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#374151"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Deliverables
+checklist</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="146"/>
+	<col width="145"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Task</b></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Layer</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Notes</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Bundle
+			NotoNaskhArabic-Regular.ttf in assets/</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">OFL
+			license — free to bundle</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">POST
+			/api/pdf/add-page-numbers endpoint</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">PyMuPDF
+			insert_text()</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">POST
+			/api/pdf/add-header-footer endpoint</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Same
+			approach, text template</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Position
+			picker UI (8 positions)</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Visual
+			grid diagram</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">RTL
+			toggle — auto-selects Arabic font + right align</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Arabic
+			UX requirement</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Live
+			single-page preview</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Render
+			first page PNG after preview call</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pro
+			feature gate</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">useFeatureFlag('page_numbers')</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="7" cellspacing="0">
+	<col width="18"/>
+	<col width="578"/>
+	<tr>
+		<td width="18" bgcolor="#fdf6b2" style="background: #fdf6b2; border: none; padding: 0in"><p align="left">
+			<font color="#c27803">⚠</font></p>
+		</td>
+		<td width="578" valign="top" bgcolor="#fdf6b2" style="background: #fdf6b2; border-top: none; border-bottom: none; border-left: 1.00pt solid #c27803; border-right: none; padding-top: 0in; padding-bottom: 0in; padding-left: 0.11in; padding-right: 0in"><p align="left">
+			<font color="#c27803"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Arabic
+			numerals (</font></font><font face="Calibri"><span lang="hi-IN"><font face="Calibri"><font size="2" style="font-size: 10pt">٠١٢٣٤٥٦٧٨٩</font></font></span></font><font face="Calibri, serif"><font size="2" style="font-size: 10pt">)
+			vs Western numerals (0123456789) — add a numeral style selector.
+			Some Arabic documents use Western numerals even in RTL context.
+			Default to Western numerals; offer Eastern Arabic as an option.</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.11in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="33"/>
+	<col width="414"/>
+	<col width="83"/>
+	<col width="54"/>
+	<tr>
+		<td width="33" bgcolor="#6c2bd9" style="background: #6c2bd9; border: none; padding: 0in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="3" style="font-size: 12pt"><b>#4</b></font></font></font></p>
+		</td>
+		<td width="414" bgcolor="#6c2bd9" style="background: #6c2bd9; border: none; padding: 0in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="3" style="font-size: 12pt"><b>Invert
+			Colors</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#6c2bd9" style="background: #6c2bd9; border: none; padding: 0in"><p align="left" style="margin-bottom: 0in">
+			<font color="#bbbbbb"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Estimate</font></font></font></p>
+			<p align="left"><font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>1
+			day</b></font></font></font></p>
+		</td>
+		<td width="54" bgcolor="#6c2bd9" style="background: #6c2bd9; border: none; padding: 0in"><p align="left" style="margin-bottom: 0in">
+			<font color="#bbbbbb"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Plan</font></font></font></p>
+			<p align="left"><font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Pro</b></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #374151; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#374151"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Why
+build this now</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Students
+and heavy readers frequently request dark-mode PDFs. This is a 1-day
+build with outsized perceived value — users feel like they're
+getting a premium feature. It also pairs naturally with your Reading
+Speed Trainer and Book Library, making Pro feel cohesive.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #0694a2; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#0694a2"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Backend
+— FastAPI / PyMuPDF</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="8" cellspacing="0">
+	<col width="606"/>
+	<tr>
+		<td width="606" valign="top" bgcolor="#f1f5f9" style="background: #f1f5f9; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; border-left: 1.50pt solid #1a56db; border-right: 1px solid #e5e7eb; padding-top: 0.08in; padding-bottom: 0.08in; padding-left: 0.14in; padding-right: 0.08in"><p style="margin-bottom: 0.03in">
+			<font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			POST /api/pdf/invert-colors</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Body: { file: UploadFile, pages: list[int] | None }</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">def
+			invert_pdf_colors(data: bytes, pages: list[int] | None) -&gt;
+			bytes:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">doc
+			= fitz.open(stream=data, filetype='pdf')</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			i, page in enumerate(doc):</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">if
+			pages is None or i in pages:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Rasterize → invert → re-embed as image page</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">mat
+			= fitz.Matrix(2, 2)  # 2x render scale for quality</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">pix
+			= page.get_pixmap(matrix=mat, alpha=False)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">pix.invert_irect()
+			      # in-place invert</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Replace page content with inverted image</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">img_pdf
+			= fitz.open('pdf', pix.pdfocr_tobytes())</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">page.show_pdf_page(page.rect,
+			img_pdf, 0)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">buf
+			= io.BytesIO()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">   
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">doc.save(buf,
+			garbage=4, deflate=True)</font></font></font></p>
+			<p><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">return
+			buf.getvalue()</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">The
+rasterize-and-replace approach works universally but increases file
+size. For text-layer PDFs, a more elegant approach is to add a black
+overlay rectangle with 'difference' blend mode via PyMuPDF's
+draw_rect — this preserves the text layer and keeps file size
+small. Offer both modes: 'Smart invert (text-only PDFs)' and 'Full
+invert (all PDFs)'.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #6c2bd9; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#6c2bd9"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Frontend
+— React (Tauri)</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Simple
+tool: upload → invert all or select pages → download. Show a
+dark-mode preview thumbnail. Optionally expose a 'warm dark' mode
+(sepia-like) by applying a color matrix after inversion. No complex
+UI needed — ship simple first.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #374151; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#374151"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Deliverables
+checklist</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="146"/>
+	<col width="145"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Task</b></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Layer</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Notes</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">POST
+			/api/pdf/invert-colors endpoint</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">PyMuPDF
+			pix.invert_irect()</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Smart
+			invert mode for text PDFs</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">draw_rect
+			with blend mode</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Page
+			range selector (reuse Visual Page Selector)</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Existing
+			component</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Dark
+			preview thumbnail</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">PNG
+			render of first inverted page</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pro
+			feature gate</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">useFeatureFlag('invert_colors')</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.11in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="33"/>
+	<col width="414"/>
+	<col width="83"/>
+	<col width="54"/>
+	<tr>
+		<td width="33" bgcolor="#c27803" style="background: #c27803; border: none; padding: 0in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="3" style="font-size: 12pt"><b>#5</b></font></font></font></p>
+		</td>
+		<td width="414" bgcolor="#c27803" style="background: #c27803; border: none; padding: 0in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="3" style="font-size: 12pt"><b>PDF
+			to Excel / Extract Tables</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#c27803" style="background: #c27803; border: none; padding: 0in"><p align="left" style="margin-bottom: 0in">
+			<font color="#bbbbbb"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Estimate</font></font></font></p>
+			<p align="left"><font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>6
+			days</b></font></font></font></p>
+		</td>
+		<td width="54" bgcolor="#c27803" style="background: #c27803; border: none; padding: 0in"><p align="left" style="margin-bottom: 0in">
+			<font color="#bbbbbb"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Plan</font></font></font></p>
+			<p align="left"><font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Pro</b></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #374151; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#374151"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Why
+build this now</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Arabic-language
+PDFs containing financial tables, government reports, and academic
+data are extremely common and notoriously hard to work with. No free
+Arabic PDF tool handles table extraction well. This is a clear
+subscription justifier — users who need it will pay for it
+repeatedly.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #0694a2; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#0694a2"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Backend
+— FastAPI / PyMuPDF</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="8" cellspacing="0">
+	<col width="606"/>
+	<tr>
+		<td width="606" valign="top" bgcolor="#f1f5f9" style="background: #f1f5f9; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; border-left: 1.50pt solid #1a56db; border-right: 1px solid #e5e7eb; padding-top: 0.08in; padding-bottom: 0.08in; padding-left: 0.14in; padding-right: 0.08in"><p style="margin-bottom: 0.03in">
+			<font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			pip install pdfplumber openpyxl</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			POST /api/pdf/extract-tables</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Body: { file: UploadFile, pages: list[int]|None, format:
+			'xlsx'|'csv'|'json' }</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">import
+			pdfplumber</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">import
+			openpyxl</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">def
+			extract_tables(data: bytes, pages: list[int]|None, fmt: str) -&gt;
+			bytes:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">   
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">all_tables
+			= []</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">with
+			pdfplumber.open(io.BytesIO(data)) as pdf:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			i, page in enumerate(pdf.pages):</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">if
+			pages is None or i in pages:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">tables
+			= page.extract_tables()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			t in tables:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">all_tables.append({'page':
+			i+1, 'data': t})</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">if
+			fmt == 'xlsx':</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">wb
+			= openpyxl.Workbook()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			idx, tbl in enumerate(all_tables):</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">ws
+			= wb.create_sheet(f'Page {tbl[&quot;page&quot;]} Table {idx+1}')</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			row in tbl['data']:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">ws.append([cell
+			or '' for cell in row])</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">       
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">wb.remove(wb['Sheet'])
+			 # remove default sheet</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">buf
+			= io.BytesIO()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">       
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">wb.save(buf)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">       
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">return
+			buf.getvalue()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">if
+			fmt == 'csv':</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Return ZIP of multiple CSVs if multiple tables</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">       
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">import
+			csv, zipfile</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">buf
+			= io.BytesIO()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">       
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">with
+			zipfile.ZipFile(buf, 'w') as zf:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			idx, tbl in enumerate(all_tables):</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">csv_buf
+			= io.StringIO()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">csv.writer(csv_buf).writerows(tbl['data'])</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">zf.writestr(f'table_{idx+1}_page_{tbl[&quot;page&quot;]}.csv',
+			csv_buf.getvalue())</font></font></font></p>
+			<p><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">return
+			buf.getvalue()</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">pdfplumber
+is more accurate than PyMuPDF for table detection, especially for
+complex bordered tables. Install: pip install pdfplumber. For scanned
+PDFs (image-only), tables cannot be extracted without OCR — combine
+with your existing Tahweel OCR or Tesseract to make image cells
+searchable before extraction. Surface a warning to the user if no
+text layer is detected.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #6c2bd9; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#6c2bd9"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Frontend
+— React (Tauri)</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Show
+an interactive table preview in the UI: render detected tables as
+HTML &lt;table&gt; elements with the raw extracted data. Let users
+deselect individual tables or rows before exporting. Format selector:
+XLSX / CSV / JSON. For multi-table results, show a numbered list of
+tables found with page attribution.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #374151; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#374151"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Deliverables
+checklist</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="146"/>
+	<col width="145"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Task</b></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Layer</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Notes</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">pip
+			install pdfplumber openpyxl</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Add
+			to requirements.txt</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">POST
+			/api/pdf/extract-tables endpoint</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Returns
+			XLSX, CSV ZIP, or JSON</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">OCR
+			fallback warning for image PDFs</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Detect
+			text layer presence</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Table
+			preview renderer (HTML table)</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Show
+			detected data before export</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Table
+			selector (include/exclude tables)</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Checkbox
+			per detected table</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Format
+			selector (XLSX / CSV / JSON)</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Radio
+			group</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Multi-sheet
+			XLSX for multiple tables</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">openpyxl
+			sheet per table</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pro
+			feature gate</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">useFeatureFlag('extract_tables')</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="7" cellspacing="0">
+	<col width="18"/>
+	<col width="578"/>
+	<tr>
+		<td width="18" bgcolor="#fdf6b2" style="background: #fdf6b2; border: none; padding: 0in"><p align="left">
+			<font color="#c27803">⚠</font></p>
+		</td>
+		<td width="578" valign="top" bgcolor="#fdf6b2" style="background: #fdf6b2; border-top: none; border-bottom: none; border-left: 1.00pt solid #c27803; border-right: none; padding-top: 0in; padding-bottom: 0in; padding-left: 0.11in; padding-right: 0in"><p align="left">
+			<font color="#c27803"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">pdfplumber
+			struggles with merged cells, rotated text, and tables without
+			visible borders. For these cases, fall back to raw text extraction
+			and display a 'low confidence' warning badge on affected tables.
+			Do not silently return garbage data.</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.11in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="33"/>
+	<col width="414"/>
+	<col width="83"/>
+	<col width="54"/>
+	<tr>
+		<td width="33" bgcolor="#c81e1e" style="background: #c81e1e; border: none; padding: 0in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="3" style="font-size: 12pt"><b>#6</b></font></font></font></p>
+		</td>
+		<td width="414" bgcolor="#c81e1e" style="background: #c81e1e; border: none; padding: 0in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="3" style="font-size: 12pt"><b>Redact
+			PDF</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#c81e1e" style="background: #c81e1e; border: none; padding: 0in"><p align="left" style="margin-bottom: 0in">
+			<font color="#bbbbbb"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Estimate</font></font></font></p>
+			<p align="left"><font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>4
+			days</b></font></font></font></p>
+		</td>
+		<td width="54" bgcolor="#c81e1e" style="background: #c81e1e; border: none; padding: 0in"><p align="left" style="margin-bottom: 0in">
+			<font color="#bbbbbb"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Plan</font></font></font></p>
+			<p align="left"><font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Pro</b></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #374151; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#374151"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Why
+build this now</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Redaction
+is a compliance and legal requirement for government and healthcare
+users across KSA, Egypt, and the broader MENA region. It is never
+free in professional tools (Adobe Acrobat charges for it). Arabic
+text redaction (right-to-left search) is specifically broken in most
+Western tools — this is a strong differentiator.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #0694a2; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#0694a2"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Backend
+— FastAPI / PyMuPDF</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="8" cellspacing="0">
+	<col width="606"/>
+	<tr>
+		<td width="606" valign="top" bgcolor="#f1f5f9" style="background: #f1f5f9; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; border-left: 1.50pt solid #1a56db; border-right: 1px solid #e5e7eb; padding-top: 0.08in; padding-bottom: 0.08in; padding-left: 0.14in; padding-right: 0.08in"><p style="margin-bottom: 0.03in">
+			<font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			POST /api/pdf/redact</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Body: { file: UploadFile, search_terms: list[str] | None,</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			        manual_rects: list[{page, x0, y0, x1, y1}] | None,</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			        fill_color: [r,g,b] }   # default [0,0,0]</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">def
+			redact_pdf(data: bytes, search_terms: list[str]|None,</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			   <font face="Courier New, serif"><font size="2" style="font-size: 9pt">manual_rects:
+			list[dict]|None,</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			   <font face="Courier New, serif"><font size="2" style="font-size: 9pt">fill_color:
+			tuple = (0,0,0)) -&gt; bytes:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">doc
+			= fitz.open(stream=data, filetype='pdf')</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			1. Search-based redaction</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">if
+			search_terms:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			term in search_terms:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			page in doc:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			quads=True for RTL Arabic text accuracy</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">hits
+			= page.search_for(term, quads=True)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			quad in hits:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">page.add_redact_annot(quad,
+			fill=fill_color)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			2. Manual rectangle redaction</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">if
+			manual_rects:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			r in manual_rects:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">page
+			= doc[r['page']]</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">rect
+			= fitz.Rect(r['x0'], r['y0'], r['x1'], r['y1'])</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">page.add_redact_annot(rect,
+			fill=fill_color)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			3. Apply all redactions (permanently removes underlying content)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			page in doc:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">       
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_PIXELS)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">buf
+			= io.BytesIO()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">   
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">doc.save(buf,
+			garbage=4, deflate=True, clean=True)</font></font></font></p>
+			<p><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">return
+			buf.getvalue()</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Use
+quads=True in search_for() for accurate Arabic text hit detection —
+Arabic ligatures and RTL direction cause standard rect-based search
+to miss characters. The images=PDF_REDACT_IMAGE_PIXELS flag ensures
+images under redaction rectangles are also permanently removed, not
+just covered. Always call doc.save(..., clean=True) to strip any
+recoverable data from the output.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #6c2bd9; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#6c2bd9"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Frontend
+— React (Tauri)</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Two
+input modes: (1) Search &amp; redact — text field supporting
+comma-separated terms, preview shows highlighted matches before
+committing; (2) Manual selection — render PDF page in viewer, let
+user draw rectangles over sensitive regions. Show a redaction
+summary: 'N areas redacted across P pages'. Warn prominently that
+redaction is permanent and cannot be undone.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #374151; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#374151"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Deliverables
+checklist</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="146"/>
+	<col width="145"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Task</b></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Layer</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Notes</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">POST
+			/api/pdf/redact endpoint</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">search_for(quads=True)
+			+ add_redact_annot</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Search-based
+			redaction with Arabic RTL support</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">quads=True
+			essential</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Manual
+			rectangle input API</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Rect
+			list from frontend coordinates</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Image
+			pixel redaction flag</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">PDF_REDACT_IMAGE_PIXELS</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Search
+			mode UI with match preview</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Highlight
+			before confirming</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Manual
+			draw mode in PDF viewer</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Rectangle
+			overlay on page render</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Permanent-action
+			warning dialog</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Irreversible
+			— confirm step</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pro
+			feature gate</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">useFeatureFlag('redact_pdf')</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="7" cellspacing="0">
+	<col width="18"/>
+	<col width="578"/>
+	<tr>
+		<td width="18" bgcolor="#fdf6b2" style="background: #fdf6b2; border: none; padding: 0in"><p align="left">
+			<font color="#c27803">⚠</font></p>
+		</td>
+		<td width="578" valign="top" bgcolor="#fdf6b2" style="background: #fdf6b2; border-top: none; border-bottom: none; border-left: 1.00pt solid #c27803; border-right: none; padding-top: 0in; padding-bottom: 0in; padding-left: 0.11in; padding-right: 0in"><p align="left">
+			<font color="#c27803"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Redaction
+			using apply_redactions() is cryptographically permanent in the
+			output file, but the source file is unchanged. Make this explicit
+			in the UI: 'The original file is not modified. Download the
+			redacted copy.' Never auto-save over the original.</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.11in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="33"/>
+	<col width="414"/>
+	<col width="83"/>
+	<col width="54"/>
+	<tr>
+		<td width="33" bgcolor="#057a55" style="background: #057a55; border: none; padding: 0in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="3" style="font-size: 12pt"><b>#7</b></font></font></font></p>
+		</td>
+		<td width="414" bgcolor="#057a55" style="background: #057a55; border: none; padding: 0in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="3" style="font-size: 12pt"><b>PDF
+			Flatten + Remove Annotations</b></font></font></font></p>
+		</td>
+		<td width="83" bgcolor="#057a55" style="background: #057a55; border: none; padding: 0in"><p align="left" style="margin-bottom: 0in">
+			<font color="#bbbbbb"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Estimate</font></font></font></p>
+			<p align="left"><font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>2
+			days</b></font></font></font></p>
+		</td>
+		<td width="54" bgcolor="#057a55" style="background: #057a55; border: none; padding: 0in"><p align="left" style="margin-bottom: 0in">
+			<font color="#bbbbbb"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Plan</font></font></font></p>
+			<p align="left"><font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Pro
+			/ Free</b></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #374151; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#374151"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Why
+build this now</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">You
+already have a full annotation suite (Comments &amp; Annotations
+tool). Flatten and Remove Annotations are the natural completion of
+that suite. Remove Annotations can be free-tier to drive tool
+discovery. Flatten (baking annotations into the page) is a Pro
+feature because it is used in professional document workflows.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #0694a2; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#0694a2"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Backend
+— FastAPI / PyMuPDF</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="8" cellspacing="0">
+	<col width="606"/>
+	<tr>
+		<td width="606" valign="top" bgcolor="#f1f5f9" style="background: #f1f5f9; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; border-left: 1.50pt solid #1a56db; border-right: 1px solid #e5e7eb; padding-top: 0.08in; padding-bottom: 0.08in; padding-left: 0.14in; padding-right: 0.08in"><p style="margin-bottom: 0.03in">
+			<font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			POST /api/pdf/remove-annotations</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Body: { file: UploadFile, types: list[str] | None }</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			types:
+			'highlight','underline','strikeout','squiggly','text','stamp','ink','link'</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">def
+			remove_annotations(data: bytes, types: list[str]|None) -&gt;
+			bytes:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">doc
+			= fitz.open(stream=data, filetype='pdf')</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			page in doc:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			annot in list(page.annots()):  # iterate copy — modifying during
+			loop unsafe</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">if
+			types is None or annot.type[1] in types:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">page.delete_annot(annot)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">buf
+			= io.BytesIO()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">   
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">doc.save(buf,
+			garbage=4, deflate=True)</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">return
+			buf.getvalue()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			POST /api/pdf/flatten</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Bakes annotations into page content permanently</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><br/>
+<br/>
+
+			</p>
+			<p style="margin-bottom: 0.03in"><font color="#111928"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">def
+			flatten_pdf(data: bytes) -&gt; bytes:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">doc
+			= fitz.open(stream=data, filetype='pdf')</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			page in doc:</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">       
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">page.clean_contents()
+			  # merge content streams</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+			Flatten form widgets</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">        <font face="Courier New, serif"><font size="2" style="font-size: 9pt">for
+			widget in list(page.widgets() or []):</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">           
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">widget.update()
+			    # ensure current value rendered</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">       
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">page.clean_contents()
+			  # clean after widget update</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">buf
+			= io.BytesIO()</font></font></font></p>
+			<p style="margin-bottom: 0.03in"><font color="#111928">   
+			<font face="Courier New, serif"><font size="2" style="font-size: 9pt">doc.save(buf,
+			garbage=4, deflate=True, clean=True)</font></font></font></p>
+			<p><font color="#111928">    <font face="Courier New, serif"><font size="2" style="font-size: 9pt">return
+			buf.getvalue()</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.06in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Iterate
+annotations as list(page.annots()) — never iterate the live
+generator while deleting. For flattening, page.clean_contents()
+merges content streams but does not rasterize; for fully rasterized
+flattening (compatible with any viewer), use the pixmap approach from
+the Invert Colors feature. Offer both: 'Smart flatten'
+(clean_contents) and 'Full flatten' (rasterize).</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #6c2bd9; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#6c2bd9"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Frontend
+— React (Tauri)</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Remove
+Annotations: show an annotation type checklist (highlight, comment,
+underline, stamp, ink) with counts per type — your existing
+annotation scanner can supply this data. Flatten: simple
+single-action button with a brief explanation of what flatten means.
+Combine both into one 'Clean PDF' tool card for discoverability.</font></font></font></p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #374151; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#374151"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Deliverables
+checklist</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="146"/>
+	<col width="145"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Task</b></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Layer</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Notes</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">POST
+			/api/pdf/remove-annotations endpoint</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">delete_annot()
+			per type</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">POST
+			/api/pdf/flatten endpoint</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">clean_contents()
+			+ widget update</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Annotation
+			type count scanner</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Backend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Re-use
+			existing annotation service</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Annotation
+			type checklist UI</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Checkbox
+			per type with count badge</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">'Clean
+			PDF' combined tool card</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Groups
+			remove + flatten</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Free
+			gate for Remove Annotations</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Free
+			tier — drives discovery</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pro
+			gate for Flatten</font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#0694a2"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Frontend</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">useFeatureFlag('flatten_pdf')</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.11in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #1a56db; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#1a56db"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Recommended
+shipping order</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p align="left" style="margin-bottom: 0.08in; line-height: 100%"><font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">Ship
+features in this order to minimize dependency risk and maximize early
+Pro conversion:</font></font></font></p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="32"/>
+	<col width="150"/>
+	<col width="97"/>
+	<col width="304"/>
+	<tr valign="top">
+		<td width="32" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Day</b></font></font></font></p>
+		</td>
+		<td width="150" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Feature</b></font></font></font></p>
+		</td>
+		<td width="97" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Risk</b></font></font></font></p>
+		</td>
+		<td width="304" bgcolor="#1a56db" style="background: #1a56db; border: 1px solid #1a56db; padding: 0.06in 0.08in"><p align="left">
+			<font color="#ffffff"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Why
+			this position</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="32" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>1</b></font></font></font></p>
+		</td>
+		<td width="150" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Flatten
+			+ Remove Annotations</b></font></font></font></p>
+		</td>
+		<td width="97" bgcolor="#f3faf7" style="background: #f3faf7; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#057a55"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Low</b></font></font></font></p>
+		</td>
+		<td width="304" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pure
+			PyMuPDF, no new libs, completes existing tool suite</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="32" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>2</b></font></font></font></p>
+		</td>
+		<td width="150" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Invert
+			Colors</b></font></font></font></p>
+		</td>
+		<td width="97" bgcolor="#f3faf7" style="background: #f3faf7; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#057a55"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Low</b></font></font></font></p>
+		</td>
+		<td width="304" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Pure
+			PyMuPDF pixmap, 1 endpoint, no UI complexity</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="32" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>3–4</b></font></font></font></p>
+		</td>
+		<td width="150" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Crop
+			PDF</b></font></font></font></p>
+		</td>
+		<td width="97" bgcolor="#f3faf7" style="background: #f3faf7; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#057a55"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Low</b></font></font></font></p>
+		</td>
+		<td width="304" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">One
+			PyMuPDF call + react-rnd for crop UI</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="32" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>5–7</b></font></font></font></p>
+		</td>
+		<td width="150" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Page
+			Numbers / Header-Footer</b></font></font></font></p>
+		</td>
+		<td width="97" bgcolor="#fdf6b2" style="background: #fdf6b2; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#c27803"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Medium</b></font></font></font></p>
+		</td>
+		<td width="304" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Font
+			bundling + RTL positioning needs careful testing</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="32" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>8–11</b></font></font></font></p>
+		</td>
+		<td width="150" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Redact
+			PDF</b></font></font></font></p>
+		</td>
+		<td width="97" bgcolor="#fdf6b2" style="background: #fdf6b2; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#c27803"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Medium</b></font></font></font></p>
+		</td>
+		<td width="304" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Arabic
+			quads search needs validation on real documents</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="32" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>12–17</b></font></font></font></p>
+		</td>
+		<td width="150" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#111928"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>PDF
+			to Excel / Tables</b></font></font></font></p>
+		</td>
+		<td width="97" bgcolor="#fdf6b2" style="background: #fdf6b2; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#c27803"><font face="Calibri, serif"><font size="2" style="font-size: 9pt"><b>Medium</b></font></font></font></p>
+		</td>
+		<td width="304" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#6b7280"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">pdfplumber
+			dependency + complex UI table preview</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.11in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<p style="margin-top: 0.22in; margin-bottom: 0.07in; line-height: 100%; border-top: none; border-bottom: 1.00pt solid #1a56db; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.06in; padding-left: 0in; padding-right: 0in">
+<font color="#1a56db"><font face="Calibri, serif"><font size="4" style="font-size: 14pt"><b>Shared
+implementation notes</b></font></font></font></p>
+<p style="margin-bottom: 0.04in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="149"/>
+	<col width="453"/>
+	<tr valign="top">
+		<td width="149" bgcolor="#ebf5ff" style="background: #ebf5ff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Feature
+			gating</b></font></font></font></p>
+		</td>
+		<td width="453" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">All
+			6 features check useFeatureFlag() from the existing React context.
+			No new gating infrastructure needed. Flatten and Remove
+			Annotations share one flag ('clean_pdf'); crop, page-numbers,
+			invert, extract-tables, and redact each have their own flag.</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="149" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Background
+			tasks</b></font></font></font></p>
+		</td>
+		<td width="453" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Redact
+			and Extract Tables can be slow on large files. Route them through
+			your existing background task system (FastAPI + task queue).
+			Return a task ID immediately; poll /api/tasks/{id}/status from the
+			frontend.</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="149" bgcolor="#ebf5ff" style="background: #ebf5ff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Arabic
+			font</b></font></font></font></p>
+		</td>
+		<td width="453" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Download
+			NotoNaskhArabic-Regular.ttf (Google Fonts, OFL license). Place in
+			assets/fonts/. Reference by absolute path in PyMuPDF insert_text()
+			calls. Do not rely on system fonts — they will be missing in
+			production.</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="149" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>Error
+			messages</b></font></font></font></p>
+		</td>
+		<td width="453" bgcolor="#f9fafb" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Provide
+			Arabic error messages alongside English for all 6 features.
+			Scanned PDF warning ('</font></font><font face="Calibri"><span lang="hi-IN"><font face="Calibri"><font size="2" style="font-size: 9pt">لا
+			يحتوي الملف على نص قابل للاستخراج</font></font></span></font><font face="Calibri, serif"><font size="2" style="font-size: 9pt">')
+			is especially important for Extract Tables and Redact search mode.</font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="149" bgcolor="#ebf5ff" style="background: #ebf5ff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#1a56db"><font face="Calibri, serif"><font size="2" style="font-size: 10pt"><b>File
+			size limits</b></font></font></font></p>
+		</td>
+		<td width="453" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #e5e7eb; padding: 0.06in 0.08in"><p align="left">
+			<font color="#374151"><font face="Calibri, serif"><font size="2" style="font-size: 9pt">Invert
+			Colors rasterizes pages at 2x scale — a 200-page document may
+			produce a very large output. Add a file-size warning for files
+			&gt;10MB and consider offering a 'low quality' (1x) invert mode.</font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="margin-bottom: 0.14in; line-height: 100%"><br/>
+<br/>
+
+</p>
+<table width="624" cellpadding="7" cellspacing="0">
+	<col width="18"/>
+	<col width="578"/>
+	<tr>
+		<td width="18" bgcolor="#f3faf7" style="background: #f3faf7; border: none; padding: 0in"><p align="left">
+			<font color="#057a55">✓</font></p>
+		</td>
+		<td width="578" valign="top" bgcolor="#f3faf7" style="background: #f3faf7; border-top: none; border-bottom: none; border-left: 1.00pt solid #057a55; border-right: none; padding-top: 0in; padding-bottom: 0in; padding-left: 0.11in; padding-right: 0in">
+			<ol><li><p align="left"><font color="#057a55"><font face="Calibri, serif"><font size="2" style="font-size: 10pt">After
+				Wave 1 ships: PDF to Word (DOCX), Digital Signature (draw mode),
+				and Batch Processing are Wave 2. These 3 features together make
+				the strongest case for a Pro subscription renewal.</font></font></font></p></li>
+			</ol>
+		</td>
+	</tr>
+</table>
+<div title="footer">
+	<table width="672" cellpadding="4" cellspacing="0">
+		<col width="328"/>
+		<col width="328"/>
+		<tr valign="top">
+			<td width="328" bgcolor="#ffffff" style="background: #ffffff; border-top: 1px solid #e5e7eb; border-bottom: none; border-left: none; border-right: none; padding-top: 0.04in; padding-bottom: 0in; padding-left: 0in; padding-right: 0in"><p align="left">
+				<font color="#6b7280"><font face="Calibri, serif"><font size="1" style="font-size: 8pt">Confidential
+				— Internal Planning Document</font></font></font></p>
+			</td>
+			<td width="328" bgcolor="#ffffff" style="background: #ffffff; border-top: 1px solid #e5e7eb; border-bottom: none; border-left: none; border-right: none; padding-top: 0.04in; padding-bottom: 0in; padding-left: 0in; padding-right: 0in"><p align="right">
+				<font color="#6b7280"><font size="1" style="font-size: 8pt">Page
+				</font></font><span style="background: #c0c0c0"><sdfield type=PAGE subtype=RANDOM format=PAGE>12</sdfield></span><font color="#6b7280"><font size="1" style="font-size: 8pt">
+				of </font></font><span style="background: #c0c0c0"><sdfield type=DOCSTAT subtype=PAGE format=PAGE>12</sdfield></span></p>
+			</td>
+		</tr>
+	</table>
+</div>
+</body>
+</html>

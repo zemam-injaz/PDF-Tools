@@ -225,6 +225,40 @@ export const api = {
     index: (pdfPath: string, useOcr: boolean = false, isAsync: boolean = false) =>
       request<{ status: string; data?: any[]; task_id?: string }>('/api/tahweel/index', 'POST', { pdf_path: pdfPath, use_ocr: useOcr, is_async: isAsync }),
   },
+  // Warraq Wave 1: PDF Tools
+  flattenPDF: (pdfPath: string, outputPath: string, mode: string = 'smart') =>
+    request<{ status: string; message: string }>('/api/pdf/flatten', 'POST', { pdf_path: pdfPath, output_path: outputPath, mode }),
+
+  removeAnnotations: (pdfPath: string, outputPath: string, types?: string[]) =>
+    request<{ status: string; data: { removed_count: number } }>('/api/pdf/remove-annotations', 'POST', { pdf_path: pdfPath, output_path: outputPath, types }),
+
+  invertColors: (pdfPath: string, outputPath: string, pages?: number[], mode: string = 'full') =>
+    request<{ status: string; message: string }>('/api/pdf/invert-colors', 'POST', { pdf_path: pdfPath, output_path: outputPath, pages, mode }),
+
+  cropPDF: (pdfPath: string, outputPath: string, x0: number, y0: number, x1: number, y1: number, pages?: number[]) =>
+    request<{ status: string; message: string }>('/api/pdf/crop', 'POST', { pdf_path: pdfPath, output_path: outputPath, x0, y0, x1, y1, pages }),
+
+  addPageNumbers: (pdfPath: string, outputPath: string, options: {
+    position?: string; format?: string; font?: string; size?: number;
+    color?: number[]; start_from?: number; rtl?: boolean
+  }) =>
+    request<{ status: string; message: string }>('/api/pdf/add-page-numbers', 'POST', {
+      pdf_path: pdfPath, output_path: outputPath, ...options
+    }),
+
+  redactPDF: (pdfPath: string, outputPath: string, options: {
+    search_terms?: string[]; manual_rects?: Array<{ page: number; x0: number; y0: number; x1: number; y1: number }>;
+    fill_color?: number[]
+  }) =>
+    request<{ status: string; message: string }>('/api/pdf/redact', 'POST', {
+      pdf_path: pdfPath, output_path: outputPath, ...options
+    }),
+
+  extractTables: (pdfPath: string, outputPath: string, format: string = 'xlsx', pages?: number[]) =>
+    request<{ status: string; data: { table_count: number; output_path: string | null } }>('/api/pdf/extract-tables', 'POST', {
+      pdf_path: pdfPath, output_path: outputPath, format, pages
+    }),
+
   // Background Tasks
   tasks: {
     list: () =>

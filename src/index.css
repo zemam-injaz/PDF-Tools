@@ -220,4 +220,62 @@ body {
 
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out forwards;
-}
+}
+
+/* ── Fast Reading Engine Animations ───────────────────────────────────────── */
+
+@keyframes wordFlash {
+  0%   { opacity: 0; transform: scale(0.92); }
+  15%  { opacity: 1; transform: scale(1.01); }
+  85%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.word-flash {
+  animation: wordFlash 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  50%       { box-shadow: 0 0 20px 4px rgba(99, 102, 241, 0.25); }
+}
+
+.rsvp-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes eyeGuide {
+  0%   { opacity: 0.2; transform: scaleY(0.7); }
+  50%  { opacity: 0.5; transform: scaleY(1.0); }
+  100% { opacity: 0.2; transform: scaleY(0.7); }
+}
+
+.eye-guide {
+  animation: eyeGuide 1.8s ease-in-out infinite;
+}
+
+/* Warm-up progress shimmer */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+.warmup-shimmer {
+  background: linear-gradient(90deg, #f59e0b 0%, #fde68a 50%, #f59e0b 100%);
+  background-size: 200% auto;
+  animation: shimmer 1.5s linear infinite;
+}
+
+/* Focus-mode word highlight ring */
+.focus-word-ring {
+  position: relative;
+}
+.focus-word-ring::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(99, 102, 241, 0.5);
+  pointer-events: none;
+}
+

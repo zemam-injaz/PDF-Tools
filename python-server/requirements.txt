@@ -9,3 +9,8 @@ google-api-python-client
 pdf2image
 pytest
 pytest-asyncio
+pdfplumber
+openpyxl
+markdown-it-py
+mdit-py-plugins
+playwright

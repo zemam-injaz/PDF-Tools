@@ -9,6 +9,7 @@ from .annotation_service import AnnotationService
 from .annotation_modifier_service import AnnotationModifierService
 from .book_library_service import BookLibraryService
 from .pdf_progress_service import PDFProgressService
+from .markdown_service import MarkdownService
 
 __all__ = [
     'PDFService',
@@ -20,6 +21,7 @@ __all__ = [
     'AnnotationService',
     'AnnotationModifierService',
     'BookLibraryService',
-    'PDFProgressService'
+    'PDFProgressService',
+    'MarkdownService'
 ]
 

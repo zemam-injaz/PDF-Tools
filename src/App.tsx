@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Files, Split, Minimize2, Image, Type, BookOpen, Layers, Stamp, Shield,
-  Library, MessageSquare, BarChart3, Zap, ArrowLeft, RotateCw, Trash2, FileOutput
+  Library, MessageSquare, BarChart3, Zap, ArrowLeft, RotateCw, Trash2, FileOutput,
+  Crop, Contrast, Hash, EyeOff, Table2, FileText
 } from 'lucide-react';
 import { PDFMergeTool } from './components/tools/PDFMergeTool';
 import { PDFSplitTool } from './components/tools/PDFSplitTool';
@@ -29,6 +30,13 @@ import { TrialBanner } from './components/subscription/TrialBanner';
 import { PrivacyPolicy } from './components/legal/PrivacyPolicy';
 import { TermsOfService } from './components/legal/TermsOfService';
 import { TaskMonitor } from './components/layout/TaskMonitor';
+import { CleanPDFTool } from './components/tools/CleanPDFTool';
+import { InvertColorsTool } from './components/tools/InvertColorsTool';
+import { CropPDFTool } from './components/tools/CropPDFTool';
+import { PageNumbersTool } from './components/tools/PageNumbersTool';
+import { RedactPDFTool } from './components/tools/RedactPDFTool';
+import { ExtractTablesTool } from './components/tools/ExtractTablesTool';
+import { MarkdownToPDFTool } from './components/tools/MarkdownToPDFTool';
 
 function App() {
   const [activeTool, setActiveTool] = useState<Tool>(null);
@@ -49,8 +57,15 @@ function App() {
     { id: 'watermark' as Tool, label: 'علامة مائية', icon: Stamp, desc: 'إضافة أو إزالة علامة مائية' },
     { id: 'security' as Tool, label: 'إزالة الحماية', icon: Shield, desc: 'إزالة كلمة المرور والقيود' },
     { id: 'images-to-pdf' as Tool, label: 'صور إلى PDF', icon: Image, desc: 'تجميع صور في ملف PDF' },
+    { id: 'markdown-to-pdf' as Tool, label: 'Markdown إلى PDF', icon: FileText, desc: 'تحويل ملفات Markdown إلى PDF احترافي' },
     { id: 'pdf-to-images' as Tool, label: 'PDF إلى صور', icon: Image, desc: 'تحويل صفحات PDF إلى صور' },
     { id: 'metadata' as Tool, label: 'تعديل الوصف', icon: Files, desc: 'تعديل البيانات الوصفية' },
+    { id: 'clean-pdf' as Tool, label: 'تنظيف PDF', icon: Layers, desc: 'إزالة أو دمج التعليقات التوضيحية' },
+    { id: 'invert-colors' as Tool, label: 'عكس الألوان', icon: Contrast, desc: 'تحويل PDF إلى الوضع الليلي' },
+    { id: 'crop-pdf' as Tool, label: 'قص PDF', icon: Crop, desc: 'قص الصفحات إلى أبعاد مخصصة' },
+    { id: 'page-numbers' as Tool, label: 'أرقام الصفحات', icon: Hash, desc: 'إضافة أرقام صفحات ورؤوس/تذييلات' },
+    { id: 'redact-pdf' as Tool, label: 'تعتيم PDF', icon: EyeOff, desc: 'إخفاء المعلومات الحساسة بشكل دائم' },
+    { id: 'extract-tables' as Tool, label: 'استخراج الجداول', icon: Table2, desc: 'تحويل جداول PDF إلى Excel/CSV/JSON' },
   ];
 
   const readingToolCards = [
@@ -79,8 +94,15 @@ function App() {
       case 'chapter-weight': return <ChapterWeightTool onNavigate={setActiveTool} />;
       case 'reading-speed': return <ReadingSpeedTool />;
       case 'images-to-pdf': return <ImagesToPDFTool />;
+      case 'markdown-to-pdf': return <MarkdownToPDFTool />;
       case 'pdf-to-images': return <PDFToImagesTool />;
       case 'metadata': return <MetadataTool />;
+      case 'clean-pdf': return <CleanPDFTool />;
+      case 'invert-colors': return <InvertColorsTool />;
+      case 'crop-pdf': return <CropPDFTool />;
+      case 'page-numbers': return <PageNumbersTool />;
+      case 'redact-pdf': return <RedactPDFTool />;
+      case 'extract-tables': return <ExtractTablesTool />;
       case 'privacy': return <PrivacyPolicy onBack={() => setActiveTool(null)} />;
       case 'terms': return <TermsOfService onBack={() => setActiveTool(null)} />;
       default: return null;
