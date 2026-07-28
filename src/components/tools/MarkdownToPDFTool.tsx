@@ -57,7 +57,7 @@ export const MarkdownToPDFTool: React.FC = () => {
 
   // Basic
   const [pageSize, setPageSize] = useState('A4');
-  const [fontFamily, setFontFamily] = useState('Noto Naskh Arabic');
+  const [fontFamily, setFontFamily] = useState('IBM Plex Sans Arabic');
   const [bodySize, setBodySize] = useState(12);
   const [lineHeight, setLineHeight] = useState(2.8);
   const [direction, setDirection] = useState<'rtl' | 'ltr'>('rtl');
@@ -76,6 +76,7 @@ export const MarkdownToPDFTool: React.FC = () => {
   const [includeToc, setIncludeToc] = useState(false);
   const [coverPage, setCoverPage] = useState(false);
   const [chapterBreaks, setChapterBreaks] = useState(true);
+  const [bookmarksEnabled, setBookmarksEnabled] = useState(true);
 
   // Header / Footer
   const [headerEnabled, setHeaderEnabled] = useState(true);
@@ -135,6 +136,7 @@ export const MarkdownToPDFTool: React.FC = () => {
           include_toc: includeToc,
           cover_page: coverPage,
           chapter_breaks: chapterBreaks,
+          bookmarks_enabled: bookmarksEnabled,
           // Header/Footer
           header_enabled: headerEnabled,
           header_text: headerText || undefined,
@@ -372,7 +374,7 @@ export const MarkdownToPDFTool: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label className="flex items-center gap-3 cursor-pointer bg-white border border-border rounded-lg p-3">
                     <input type="checkbox" checked={coverPage} onChange={(e) => setCoverPage(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
                     <span className="text-sm font-semibold text-primary">صفحة غلاف</span>
@@ -384,6 +386,10 @@ export const MarkdownToPDFTool: React.FC = () => {
                   <label className="flex items-center gap-3 cursor-pointer bg-white border border-border rounded-lg p-3">
                     <input type="checkbox" checked={chapterBreaks} onChange={(e) => setChapterBreaks(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
                     <span className="text-sm font-semibold text-primary">فصل كل ملف بصفحة</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer bg-white border border-border rounded-lg p-3">
+                    <input type="checkbox" checked={bookmarksEnabled} onChange={(e) => setBookmarksEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
+                    <span className="text-sm font-semibold text-primary">إنشاء إشارات للملفات</span>
                   </label>
                 </div>
               </>

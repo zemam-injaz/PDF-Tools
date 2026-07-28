@@ -116,6 +116,16 @@ body {{
     background: #ffffff;
 }}
 
+/* Bookmark markers: tiny but searchable in the PDF */
+.bm-marker {{
+    font-size: 1pt;
+    line-height: 1;
+    color: #ffffff;
+    display: inline;
+    margin: 0;
+    padding: 0;
+}}
+
 /* Cover page */
 .cover-page {{
     page-break-after: always;
@@ -387,13 +397,14 @@ class MarkdownService:
         'direction': 'rtl',
         'text_align': 'justify',
         # Typography
-        'font_family': 'Noto Naskh Arabic',
+        'font_family': 'IBM Plex Sans Arabic',
         'body_size': 12,
         'line_height': 2.8,
         # Content structure
         'include_toc': False,
         'cover_page': False,
         'chapter_breaks': True,
+        'bookmarks_enabled': True,
         # Metadata
         'title': None,
         'subtitle': None,
@@ -516,8 +527,8 @@ class MarkdownService:
         if opts['font_family'] not in AVAILABLE_FONTS:
             opts['font_family'] = 'Noto Naskh Arabic'
 
-        md_text = MarkdownService._read_and_merge_files(markdown_files, opts)
-        html = MarkdownService._build_html(md_text, opts)
+        md_text, file_names = MarkdownService._read_and_merge_files(markdown_files, opts)
+        html, bookmarks = MarkdownService._build_html(md_text, file_names, opts)
 
         tmp_html = Path(tempfile.mkdtemp()) / 'warraq_output.html'
         tmp_html.write_text(html, encoding='utf-8')
@@ -526,10 +537,12 @@ class MarkdownService:
         footer_template = MarkdownService._build_playwright_template(opts, 'footer')
         has_header_footer = bool(header_template.strip() != '<div></div>' or footer_template.strip() != '<div></div>')
 
+        bookmark_page_numbers = {}
         with sync_playwright() as pw:
             browser = pw.chromium.launch()
             page = browser.new_page()
             page.goto(tmp_html.as_uri(), wait_until='networkidle')
+
 
             pdf_kwargs = {
                 'path': output_path,
@@ -556,22 +569,22 @@ class MarkdownService:
             pass
 
         MarkdownService._apply_pdf_metadata(output_path, opts)
+        MarkdownService._apply_bookmarks(output_path, bookmarks, bookmark_page_numbers)
         return output_path
 
     @staticmethod
-    def _read_and_merge_files(markdown_files: List[str], opts: dict) -> str:
+    def _read_and_merge_files(markdown_files: List[str], opts: dict):
         sections = []
+        file_names = []
         for file_path in markdown_files:
             if not os.path.isfile(file_path):
                 continue
             with open(file_path, 'r', encoding='utf-8-sig') as f:
                 content = f.read()
-            if len(markdown_files) > 1 and opts.get('chapter_breaks', True):
-                title = os.path.splitext(os.path.basename(file_path))[0]
-                sections.append(f"# {title}\n\n{content}")
-            else:
-                sections.append(content)
-        return '\n\n---\n\n'.join(sections)
+            file_name = os.path.splitext(os.path.basename(file_path))[0]
+            file_names.append(file_name)
+            sections.append(content)
+        return '\n\n---\n\n'.join(sections), file_names
 
     @staticmethod
     def _preprocess_markdown(text: str) -> str:
@@ -580,7 +593,7 @@ class MarkdownService:
         return text
 
     @staticmethod
-    def _build_html(md_text: str, opts: dict) -> str:
+    def _build_html(md_text: str, file_names: List[str], opts: dict):
         md_text = MarkdownService._preprocess_markdown(md_text)
 
         md = MarkdownIt(
@@ -591,13 +604,50 @@ class MarkdownService:
         md.use(container_plugin, name='warning')
         md.use(footnote_plugin)
 
+        def _strip_html_tags(value: str) -> str:
+            return re.sub(r'<[^>]+>', '', value)
+
         # Split into chapters based on --- separators
         parts = re.split(r'\n\s*-{3,}\s*\n', md_text)
         chapter_htmls = []
+        bookmarks = []
+        multiple_files = len(parts) > 1
         for i, part in enumerate(parts):
             part_html = md.render(part)
+            file_name = file_names[i] if i < len(file_names) else f'Part {i + 1}'
+
+            # Extract headings first (before adding IDs)
+            heading_matches = list(re.finditer(r'<(h[1-6])>(.*?)</\1>', part_html, flags=re.S))
+
+            # Determine file/chapter title
+            file_title = file_name
+            first_h1_idx = next(
+                (idx for idx, m in enumerate(heading_matches) if m.group(1) == 'h1'), None
+            )
+            if not multiple_files and opts.get('title'):
+                file_title = opts['title']
+            elif not multiple_files and first_h1_idx is not None:
+                file_title = _strip_html_tags(heading_matches[first_h1_idx].group(2)).strip() or file_name
+
+            bookmarks_enabled = opts.get('bookmarks_enabled', True)
+
+            def heading_repl(m):
+                tag = m.group(1)
+                inner = m.group(2)
+                title = _strip_html_tags(inner).strip()
+                if not title:
+                    return f'<{tag}>{inner}</{tag}>'
+                return f'<{tag}>{inner}</{tag}>'
+
+            part_html = re.sub(r'<(h[1-6])>(.*?)</\1>', heading_repl, part_html, flags=re.S)
+
+            if bookmarks_enabled:
+                file_id = f'bm-file-{i}'
+                bookmarks.append({'level': 1, 'title': file_title, 'id': file_id})
+
             cls = 'chapter' if i > 0 or opts.get('chapter_breaks', True) else 'chapter first'
-            chapter_htmls.append(f'<section class="{cls}">\n{part_html}\n</section>')
+            section_marker = f'<span class="bm-marker">BMK_BM_FILE_{i} </span>'
+            chapter_htmls.append(f'<section id="bm-file-{i}" class="{cls}">{section_marker}\n{part_html}\n</section>')
         body_html = '\n'.join(chapter_htmls)
 
         toc_html = ''
@@ -641,7 +691,7 @@ class MarkdownService:
         )
 
         lang = opts.get('lang', 'ar')
-        return f"""<!DOCTYPE html>
+        html = f"""<!DOCTYPE html>
 <html dir="{opts['direction']}" lang="{lang}">
 <head>
 <meta charset="utf-8">
@@ -655,6 +705,7 @@ class MarkdownService:
 {body_html}
 </body>
 </html>"""
+        return html, bookmarks
 
     @staticmethod
     def _build_cover_page(opts: dict) -> str:
@@ -695,7 +746,8 @@ class MarkdownService:
             return ''
         is_rtl = opts.get('direction') == 'rtl'
         toc_title = 'فهرس المحتويات' if is_rtl else 'Table of Contents'
-        return f'<div class="toc">\n<h2>{toc_title}</h2>\n' + '\n'.join(entries) + '\n</div>\n'
+        toc_marker = '<span class="bm-marker">BMK_BM_TOC_PAGE </span>'
+        return f'<div id="bm-toc-page" class="toc">{toc_marker}\n<h2>{toc_title}</h2>\n' + '\n'.join(entries) + '\n</div>\n'
 
     @staticmethod
     def _apply_pdf_metadata(pdf_path: str, opts: dict) -> None:
@@ -722,3 +774,72 @@ class MarkdownService:
             doc.close()
         except Exception:
             pass
+
+    @staticmethod
+    def _apply_bookmarks(pdf_path: str, bookmarks: List[dict], page_numbers: dict) -> None:
+        if not bookmarks:
+            return
+        try:
+            doc = fitz.open(pdf_path)
+
+            # Strategy: use marker text search for file-level bookmarks, and
+            # PyMuPDF's page.search_for() for heading bookmarks (more robust
+            # across RTL layouts and different PDF renderers).
+
+            # Identify the TOC page so we don't accidentally match headings
+            # listed in the table of contents.
+            toc_page = None
+            toc_marker = 'BMK_BM_TOC_PAGE'
+            for page_idx in range(len(doc)):
+                if 'BMK_BM_TOC_PAGE' in doc[page_idx].get_text():
+                    toc_page = page_idx + 1
+                    break
+
+            # ── Pass 1: markers (for file-level and TOC bookmarks) ──────
+            marker_to_id = {}
+            for bm in bookmarks:
+                bid = bm.get('id')
+                if bid:
+                    marker = f"BMK_{bid.upper().replace('-', '_')}"
+                    marker_to_id[marker] = bid
+            marker_pattern = re.compile(r'BMK_[A-Z0-9_]+')
+            for page_idx in range(len(doc)):
+                text = doc[page_idx].get_text()
+                for marker in marker_pattern.findall(text):
+                    bid = marker_to_id.get(marker)
+                    if bid and bid not in page_numbers:
+                        page_numbers[bid] = page_idx + 1
+
+            # ── Pass 2: direct title search for heading bookmarks ──────
+            heading_bookmarks = [
+                bm for bm in bookmarks
+                if bm.get('id') and bm['id'].startswith('bm-f')
+                and bm.get('title')
+            ]
+            for bm in heading_bookmarks:
+                if bm['id'] in page_numbers:
+                    continue
+                title = bm['title']
+                for page_idx in range(len(doc)):
+                    pg = page_idx + 1
+                    if pg == toc_page:
+                        continue
+                    # page.search_for() returns rectangles; non-empty = found
+                    if doc[page_idx].search_for(title):
+                        page_numbers[bm['id']] = pg
+                        break
+
+            # ── Assemble the TOC from resolved page numbers ────────────
+            toc = []
+            for bm in bookmarks:
+                bid = bm.get('id')
+                page_num = page_numbers.get(bid)
+                if page_num is None:
+                    continue
+                toc.append([bm['level'], bm['title'], page_num])
+            if toc:
+                doc.set_toc(toc)
+                doc.save(pdf_path, incremental=True, encryption=0)
+            doc.close()
+        except Exception as e:
+            raise RuntimeError(f"Failed to apply bookmarks: {e}")

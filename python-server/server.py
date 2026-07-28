@@ -318,6 +318,7 @@ class MarkdownToPDFRequest(BaseModel):
     include_toc: bool = False
     cover_page: bool = False
     chapter_breaks: bool = True
+    bookmarks_enabled: bool = True
 
     # Metadata
     title: Optional[str] = None
@@ -1357,6 +1358,7 @@ def markdown_to_pdf(request: MarkdownToPDFRequest):
             'include_toc': request.include_toc,
             'cover_page': request.cover_page,
             'chapter_breaks': request.chapter_breaks,
+            'bookmarks_enabled': request.bookmarks_enabled,
             # Metadata
             'title': request.title,
             'subtitle': request.subtitle,
