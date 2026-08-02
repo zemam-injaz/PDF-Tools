@@ -1,4 +1,5 @@
 """Professional Markdown to PDF conversion service using Chromium"""
+import html
 import os
 import re
 import tempfile
@@ -439,6 +440,30 @@ class MarkdownService:
         'toc_color': '#374151',
     }
 
+    ILLEGAL_FILENAME_CHARS = set('\\/:*?"<>|')
+
+    @staticmethod
+    def _sanitize_title(title: str) -> str:
+        title = html.unescape(title)
+        illegal = {
+            '\\': ' - ',
+            '/': ' - ',
+            ':': ' -',
+            '*': '×',
+            '?': '',
+            '"': "'",
+            '<': '‹',
+            '>': '›',
+            '|': ' - ',
+        }
+        for ch, repl in illegal.items():
+            title = title.replace(ch, repl)
+        return re.sub(r'\s+', ' ', title).strip()
+
+    @staticmethod
+    def _has_illegal_chars(title: str) -> bool:
+        return any(ch in title for ch in MarkdownService.ILLEGAL_FILENAME_CHARS)
+
     @staticmethod
     def _build_playwright_template(opts: dict, kind: str) -> str:
         """Build a self-contained HTML header/footer template for Playwright."""
@@ -626,24 +651,21 @@ class MarkdownService:
             )
             if not multiple_files and opts.get('title'):
                 file_title = opts['title']
-            elif not multiple_files and first_h1_idx is not None:
-                file_title = _strip_html_tags(heading_matches[first_h1_idx].group(2)).strip() or file_name
+            elif first_h1_idx is not None:
+                raw = _strip_html_tags(heading_matches[first_h1_idx].group(2)).strip()
+                if raw:
+                    file_title = raw
 
             bookmarks_enabled = opts.get('bookmarks_enabled', True)
 
-            def heading_repl(m):
-                tag = m.group(1)
-                inner = m.group(2)
-                title = _strip_html_tags(inner).strip()
-                if not title:
-                    return f'<{tag}>{inner}</{tag}>'
-                return f'<{tag}>{inner}</{tag}>'
-
-            part_html = re.sub(r'<(h[1-6])>(.*?)</\1>', heading_repl, part_html, flags=re.S)
-
             if bookmarks_enabled:
-                file_id = f'bm-file-{i}'
-                bookmarks.append({'level': 1, 'title': file_title, 'id': file_id})
+                file_title_clean = MarkdownService._sanitize_title(file_title)
+                if file_title_clean:
+                    bookmarks.append({
+                        'level': 1,
+                        'title': file_title_clean,
+                        'id': f'bm-file-{i}'
+                    })
 
             cls = 'chapter' if i > 0 or opts.get('chapter_breaks', True) else 'chapter first'
             section_marker = f'<span class="bm-marker">BMK_BM_FILE_{i} </span>'
@@ -782,9 +804,8 @@ class MarkdownService:
         try:
             doc = fitz.open(pdf_path)
 
-            # Strategy: use marker text search for file-level bookmarks, and
-            # PyMuPDF's page.search_for() for heading bookmarks (more robust
-            # across RTL layouts and different PDF renderers).
+            # Strategy: use marker text search for file-level bookmarks, with
+            # PyMuPDF's page.search_for() as fallback for unmatched titles.
 
             # Identify the TOC page so we don't accidentally match headings
             # listed in the table of contents.
@@ -836,8 +857,32 @@ class MarkdownService:
                 page_num = page_numbers.get(bid)
                 if page_num is None:
                     continue
-                toc.append([bm['level'], bm['title'], page_num])
+                title = bm.get('title', '').strip()
+                if not title:
+                    continue
+                toc.append([bm['level'], title, page_num])
+
             if toc:
+                # Shift levels so the minimum is 1
+                min_level = min(entry[0] for entry in toc)
+                if min_level > 1:
+                    shift = min_level - 1
+                    for entry in toc:
+                        entry[0] -= shift
+
+                # Ensure the very first entry is level 1
+                if toc[0][0] != 1:
+                    toc[0][0] = 1
+
+                # PyMuPDF requires that no entry skips more than one level
+                # relative to the previous entry (e.g. h1 -> h3 is invalid).
+                # Walk through and clamp each level to prev_level + 1 at most.
+                prev_level = toc[0][0]
+                for entry in toc[1:]:
+                    entry[0] = min(entry[0], prev_level + 1)
+                    entry[0] = max(entry[0], 1)      # never below 1
+                    prev_level = entry[0]
+
                 doc.set_toc(toc)
                 doc.save(pdf_path, incremental=True, encryption=0)
             doc.close()

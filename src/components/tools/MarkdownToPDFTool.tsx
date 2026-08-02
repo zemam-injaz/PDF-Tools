@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { getApiBaseUrl } from '../../lib/api';
-import { FileText, ArrowRight, CheckCircle, AlertCircle, X, FileImage, Settings, BookOpen, PanelTop, Palette } from 'lucide-react';
+import { FolderOpen, FileText, ArrowRight, CheckCircle, AlertCircle, X, FileImage, Settings, BookOpen, PanelTop, Palette } from 'lucide-react';
 import { FileInput, MultiFileInput } from '../ui/FileInput';
+import { openPath } from '../../lib/utils';
 
 const PAGE_SIZES = [
   { value: 'A4', label: 'A4' },
@@ -54,6 +55,7 @@ export const MarkdownToPDFTool: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
   const [status, setStatus] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
+  const [lastOutputPath, setLastOutputPath] = useState('');
 
   // Basic
   const [pageSize, setPageSize] = useState('A4');
@@ -166,6 +168,7 @@ export const MarkdownToPDFTool: React.FC = () => {
       setLoading(false);
 
       if (res.ok) {
+        setLastOutputPath(finalPath);
         setStatus({ type: 'success', message: '✅ تم إنشاء ملف PDF بنجاح!' });
         setFiles([]);
         setOutputPath('');
@@ -511,6 +514,18 @@ export const MarkdownToPDFTool: React.FC = () => {
                 status.type === 'error' ? <AlertCircle size={18} /> :
                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />}
               {status.message}
+              {status.type === 'success' && lastOutputPath && (
+                <button
+                  onClick={() => {
+                    const dir = lastOutputPath.substring(0, lastOutputPath.lastIndexOf('\\'));
+                    openPath(dir || lastOutputPath);
+                  }}
+                  className="mr-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                >
+                  <FolderOpen size={14} />
+                  فتح المجلد
+                </button>
+              )}
             </div>
           )}
 
