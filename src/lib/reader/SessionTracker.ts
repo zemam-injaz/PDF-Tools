@@ -1,4 +1,4 @@
-import type { TimedToken, SessionReport, ReaderMode, SessionState, DayRating } from './types';
+import type { TimedToken, SessionReport, ReaderMode, SessionState, DayRating, SessionPhase, ReadingProfile, BaselineResult, ComprehensionRating } from './types';
 
 export interface SessionEvent {
   type: 'display' | 'pause' | 'resume' | 'regression' | 'skip_forward' | 'skip_backward' | 'speed_change' | 'comprehension_answer';
@@ -62,6 +62,16 @@ export class SessionTracker {
     return Math.max(0, Math.floor(base / 1000));
   }
 
+  getTotalElapsedSeconds(): number {
+    if (this.state === 'idle') return 0;
+    const base = Date.now() - this.startTime;
+    return Math.max(0, Math.floor(base / 1000));
+  }
+
+  getPauseCount(): number {
+    return this.events.filter(e => e.type === 'pause').length;
+  }
+
   getState(): SessionState {
     return this.state;
   }
@@ -69,7 +79,7 @@ export class SessionTracker {
   finish(wordsRead: number, totalWords: number, fileName: string, mode: ReaderMode, targetWpm: number, chunkSize: number): SessionReport {
     const elapsed = this.getElapsedSeconds();
     const minutes = elapsed / 60;
-    const wpm = minutes > 0 ? Math.round(wordsRead / minutes) : 0;
+    const averageWPM = minutes > 0 ? Math.round(wordsRead / minutes) : 0;
 
     const displayEvents = this.events.filter(e => e.type === 'display');
     const fixations = displayEvents.map((e, i, arr) => {
@@ -77,8 +87,16 @@ export class SessionTracker {
       return e.timestamp - arr[i - 1].timestamp;
     });
     const averageFixation = fixations.length > 0 ? fixations.reduce((a, b) => a + b, 0) / fixations.length : 0;
+    
+    // Estimate peakWPM from speed change events or targetWpm
+    const speedChanges = this.events.filter(e => e.type === 'speed_change').map(e => e.data?.newWpm as number || 0);
+    const maxSetWpm = Math.max(targetWpm, ...speedChanges);
+    const peakWPM = Math.max(averageWPM, maxSetWpm);
 
     const regressionCount = this.events.filter(e => e.type === 'regression').length;
+    // We normalize consistency over the display events (which correspond to chunks)
+    // but the actual report asked to do it per word. Since we only have chunk display events,
+    // we compute consistency over chunks but consider the dwell times.
     const consistency = this.computeConsistency(fixations);
 
     this.state = 'done';
@@ -89,7 +107,8 @@ export class SessionTracker {
       totalWords,
       wordsRead,
       durationSeconds: elapsed,
-      wpm,
+      averageWPM,
+      peakWPM,
       targetWpm,
       chunkSize,
       comprehensionScore: null,
@@ -102,12 +121,97 @@ export class SessionTracker {
   }
 
   private computeConsistency(fixations: number[]): number {
-    if (fixations.length < 3) return 100;
-    const mean = fixations.reduce((a, b) => a + b, 0) / fixations.length;
+    const validFixations = fixations.filter(f => f > 0);
+    if (validFixations.length < 3) return 100;
+    const mean = validFixations.reduce((a, b) => a + b, 0) / validFixations.length;
     if (mean === 0) return 100;
-    const variance = fixations.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / fixations.length;
+    const variance = validFixations.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / validFixations.length;
     const stdDev = Math.sqrt(variance);
     return Math.max(0, Math.min(100, Math.round((1 - stdDev / mean) * 100)));
+  }
+
+  // ── Phase 2: Baseline & Coaching ──
+
+  finishBaseline(wordsRead: number): BaselineResult {
+    const activeSec = this.getElapsedSeconds();
+    const totalSec = this.getTotalElapsedSeconds();
+    const minutes = activeSec / 60;
+    const naturalWpm = minutes > 0 ? Math.round(wordsRead / minutes) : 0;
+    
+    let confidence: 'high' | 'medium' | 'low' = 'low';
+    if (activeSec >= 180 && this.getPauseCount() <= 3) {
+      confidence = 'high';
+    } else if (activeSec >= 60) {
+      confidence = 'medium';
+    }
+
+    this.state = 'done';
+
+    return {
+      naturalWpm,
+      durationSeconds: totalSec,
+      activeSeconds: activeSec,
+      wordsRead,
+      confidence
+    };
+  }
+}
+
+export class SessionCoach {
+  private profile: ReadingProfile;
+  
+  constructor(profile: ReadingProfile) {
+    this.profile = profile;
+  }
+
+  getPhaseAndSpeed(activeElapsedSec: number): { phase: SessionPhase, targetWpm: number } {
+    // 0:00 - 1:00 Warm-up (Comfortable WPM)
+    if (activeElapsedSec < 60) {
+      return { phase: 'warmup', targetWpm: this.profile.comfortableWpm };
+    }
+    // 1:00 - 8:00 Training (Training WPM)
+    if (activeElapsedSec < 480) {
+      return { phase: 'training', targetWpm: this.profile.trainingWpm };
+    }
+    // 8:00 - 11:00 Challenge (Challenge WPM)
+    if (activeElapsedSec < 660) {
+      return { phase: 'challenge', targetWpm: this.profile.challengeWpm };
+    }
+    // 11:00+ Recovery (Comfortable WPM)
+    return { phase: 'recovery', targetWpm: this.profile.comfortableWpm };
+  }
+
+  static generateInitialProfile(baseline: BaselineResult): ReadingProfile {
+    const natural = baseline.naturalWpm;
+    return {
+      naturalWpm: natural,
+      comfortableWpm: Math.round(natural * 0.95),
+      trainingWpm: natural,
+      challengeWpm: Math.round(natural * 1.10),
+      peakWpm: natural,
+      bestStableWpm: natural,
+    };
+  }
+
+  static applyComprehensionFeedback(profile: ReadingProfile, rating: ComprehensionRating): ReadingProfile {
+    const newProfile = { ...profile };
+    // 4-5: +5%, 3: maintain, 1-2: -5%
+    if (rating >= 4) {
+      newProfile.trainingWpm = Math.round(newProfile.trainingWpm * 1.05);
+    } else if (rating <= 2) {
+      newProfile.trainingWpm = Math.round(newProfile.trainingWpm * 0.95);
+    }
+    
+    // Ensure boundaries
+    newProfile.trainingWpm = Math.max(newProfile.comfortableWpm, newProfile.trainingWpm);
+    newProfile.challengeWpm = Math.round(newProfile.trainingWpm * 1.10);
+    newProfile.peakWpm = Math.max(newProfile.peakWpm, newProfile.challengeWpm);
+    
+    if (rating >= 4) {
+      newProfile.bestStableWpm = Math.max(newProfile.bestStableWpm, profile.trainingWpm);
+    }
+
+    return newProfile;
   }
 }
 

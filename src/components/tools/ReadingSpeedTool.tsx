@@ -2,15 +2,16 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   FileText, Play, Pause, Square, Upload, CheckCircle, BookOpen, Zap,
   Loader2, Clock, Calendar as CalendarIcon, BarChart3, Lock,
-  Maximize2, Minimize2, Eye, TrendingUp, Award, Target, X
+  Maximize2, Eye, TrendingUp, Award, Target, X
 } from 'lucide-react';
 import { api, type TaskInfo } from '../../lib/api';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { PricingPage } from '../pricing/PricingPage';
 import { UpgradeButton } from '../pricing/UpgradeButton';
-import { tokenize, buildChunks, getOrpIndex, type Token, type Language } from '../../lib/reader/Tokenizer';
-import { chunkDwellMs, effectiveWPM, chunkSizeFromWPM } from '../../lib/reader/TimingEngine';
-import { SessionTracker, type SessionReport } from '../../lib/reader/SessionTracker';
+import { tokenize, buildChunks, getOrpIndex, type Language } from '../../lib/reader/Tokenizer';
+import { chunkDwellMs, effectiveWPM, chunkSizeFromWPM, WARM_UP_SECONDS } from '../../lib/reader/TimingEngine';
+import { SessionTracker, generateReadingPlan } from '../../lib/reader/SessionTracker';
+import type { Token, SessionReport, TimedToken } from '../../lib/reader/types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,23 @@ function formatTime(s: number) {
   const m = Math.floor(s / 60);
   const sec = s % 60;
   return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+function countWordsInChunks(chunks: Token[][], upToExclusive: number): number {
+  let n = 0;
+  for (let i = 0; i < Math.min(upToExclusive, chunks.length); i++) {
+    n += chunks[i].filter(t => t.type === 'word').length;
+  }
+  return n;
+}
+
+function chunkIndexForWord(chunks: Token[][], wordIndex: number): number {
+  let acc = 0;
+  for (let i = 0; i < chunks.length; i++) {
+    acc += chunks[i].filter(t => t.type === 'word').length;
+    if (acc > wordIndex) return i;
+  }
+  return Math.max(0, chunks.length - 1);
 }
 
 // ─── Sub-Components ──────────────────────────────────────────────────────────
@@ -92,18 +110,23 @@ function OrpWord({ word, language }: { word: string; language: Language }) {
   );
 }
 
-// ─── Immersive RSVP Display ──────────────────────────────────────────────────
+// ─── RSVP Display ────────────────────────────────────────────────────────────
+//
+// Expert fast-reading display with:
+//  - Flash animation on every word change
+//  - Horizontal ORP alignment guide (left-third focus line)
+//  - Colour-coded ORP pivot letter
+//  - Ghost preview of next chunk
+//  - Bottom HUD only in card mode (no overlap in fullscreen)
 
 interface RSVPDisplayProps {
   currentChunk: Token[];
   nextChunk: Token[];
   language: Language;
-  progress: number; // 0-100
+  progress: number;
   wpm: number;
   elapsed: number;
   targetWPM: number;
-  sessionState: SessionState;
-  onTogglePlay: () => void;
   onSpeedChange: (delta: number) => void;
   isImmersive?: boolean;
 }
@@ -116,99 +139,165 @@ function RSVPDisplay({
   wpm,
   elapsed,
   targetWPM,
-  sessionState,
-  onTogglePlay,
   onSpeedChange,
   isImmersive = false,
 }: RSVPDisplayProps) {
-  const chunkText = currentChunk.map(t => t.text).join(' ');
-  const nextText = nextChunk.map(t => t.text).join('');
-  const isSingleWord = currentChunk.length === 1;
+  const [flash, setFlash] = useState(false);
+  const wordTokens = currentChunk.filter(t => t.type === 'word');
+  const nextWords  = nextChunk.filter(t => t.type === 'word').map(t => t.text).join(' ');
+  const isSingle   = wordTokens.length === 1;
+  const chunkKey   = wordTokens.map(t => t.text).join('\u00b7');
+  const fontFamily = language === 'ar' ? "'IBM Plex Sans Arabic', sans-serif" : "'Inter', sans-serif";
+
+  // 80ms flash effect on every word change
+  useEffect(() => {
+    setFlash(true);
+    const t = setTimeout(() => setFlash(false), 80);
+    return () => clearTimeout(t);
+  }, [chunkKey]);
 
   return (
-    <div className={`relative flex flex-col items-center justify-center bg-gradient-to-b from-slate-900 to-slate-950 ${isImmersive ? 'fixed inset-0 z-50' : 'h-[360px] rounded-3xl border border-slate-700/50 shadow-2xl'} overflow-hidden`}>
-      {/* Ambient background glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-32 bg-indigo-600/10 blur-3xl rounded-full" />
+    <div
+      onWheel={(e) => {
+        // Prevent default scrolling and change speed smoothly
+        if (Math.abs(e.deltaY) > 0) {
+          onSpeedChange(e.deltaY > 0 ? -10 : 10);
+        }
+      }}
+      className={`relative flex flex-col bg-[#070b12] overflow-hidden
+        ${isImmersive
+          ? 'flex-1 w-full'
+          : 'h-[400px] rounded-2xl border border-slate-800/50 shadow-[0_0_60px_rgba(99,102,241,0.07)]'}`}
+    >
+      {/* Pulsing ambient glow */}
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity duration-75"
+        style={{ opacity: flash ? 0.20 : 0.06 }}
+      >
+        <div className="w-[520px] h-[220px] bg-indigo-500 blur-[90px] rounded-full" />
       </div>
 
-      {/* Eye guide line */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full flex items-center justify-center pointer-events-none">
-        <div className="w-[2px] h-20 bg-gradient-to-b from-transparent via-indigo-500/30 to-transparent" />
+      {/* Horizontal guide rails framing the word zone */}
+      <div className="pointer-events-none absolute inset-0 flex flex-col justify-center">
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-indigo-500/15 to-transparent -translate-y-[52px]" />
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-indigo-500/15 to-transparent  translate-y-[52px]" />
       </div>
 
-      {/* Prev word hint */}
-      <div className="text-slate-600 text-sm font-medium mb-8 h-5 select-none animate-fade-in">
-        {nextText && <span className="text-slate-500 text-xs">{nextText}</span>}
+      {/* Vertical ORP focal marker */}
+      <div
+        className="pointer-events-none absolute top-0 bottom-0 flex items-center"
+        style={{ [language === 'ar' ? 'right' : 'left']: '40%' }}
+      >
+        <div
+          className="w-[2px] h-16 rounded-full transition-all duration-75"
+          style={{
+            background: 'linear-gradient(to bottom, transparent, rgba(99,102,241,0.7) 25%, rgba(139,92,246,0.7) 75%, transparent)',
+            opacity: flash ? 1 : 0.35,
+            transform: flash ? 'scaleY(1.15)' : 'scaleY(1)',
+          }}
+        />
       </div>
 
-      {/* Main word display */}
-      <div className="text-center w-full px-8 z-10 relative">
-        {isSingleWord ? (
-          <div
-            key={chunkText}
-            className="text-6xl md:text-8xl font-extrabold tracking-tight select-none"
-            style={{ fontFamily: language === 'arabic' ? "'IBM Plex Sans Arabic', sans-serif" : "inherit" }}
-          >
-            <OrpWord word={chunkText} language={language} />
-          </div>
-        ) : (
-          <div
-            key={chunkText}
-            className="text-3xl md:text-5xl font-bold text-slate-100 flex flex-wrap justify-center gap-3 select-none"
-          >
-            {currentChunk.map((token, i) => (
-              <span key={i} className={i === 0 ? 'text-indigo-300' : 'text-slate-200'}>
-                {token.text}
-              </span>
-            ))}
-          </div>
-        )}
+      {/* Ghost next-word preview above */}
+      <div
+        className="absolute top-0 left-0 right-0 flex justify-center pt-4 pointer-events-none"
+        style={{ fontFamily }}
+      >
+        <span
+          className="text-slate-700 text-sm font-medium tracking-wide transition-opacity duration-200"
+          style={{ opacity: nextWords ? 0.55 : 0 }}
+        >
+          {nextWords}
+        </span>
       </div>
 
-      {/* Bottom HUD */}
-      <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between z-20">
-        {/* Speed control */}
-        <div className="flex flex-col gap-1">
-          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Speed</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onSpeedChange(-25)}
-              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white font-bold text-xs transition-all"
-            >−</button>
-            <span className="text-indigo-400 font-black text-sm tabular-nums w-12 text-center">{targetWPM}</span>
-            <button
-              onClick={() => onSpeedChange(25)}
-              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white font-bold text-xs transition-all"
-            >+</button>
-          </div>
-        </div>
-
-        {/* Center stats */}
-        <div className="flex items-center gap-4 text-center">
-          <div className="flex flex-col items-center">
-            <span className="text-white font-black text-lg tabular-nums">{formatTime(elapsed)}</span>
-            <span className="text-[8px] text-slate-500 uppercase tracking-widest">Elapsed</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="text-indigo-400 font-black text-lg tabular-nums">{Math.round(progress)}%</span>
-            <span className="text-[8px] text-slate-500 uppercase tracking-widest">Progress</span>
-          </div>
-        </div>
-
-        {/* Live WPM ring */}
-        <div className="scale-75 origin-bottom-right">
-          <SpeedRing wpm={wpm} targetWPM={targetWPM} />
+      {/* ── Main word zone ── */}
+      <div className="flex-1 flex items-center justify-center px-6">
+        <div
+          key={chunkKey}
+          className="w-full text-center select-none"
+          style={{
+            fontFamily,
+            animation: 'rsvpFlash 0.09s ease-out',
+          }}
+        >
+          {isSingle ? (
+            <div
+              className="leading-none tracking-tight"
+              style={{
+                fontSize: isImmersive ? 'clamp(4.5rem,11vw,10rem)' : 'clamp(3.2rem,7vw,6rem)',
+                fontWeight: 900,
+              }}
+            >
+              <OrpWord word={wordTokens[0].text} language={language} />
+            </div>
+          ) : (
+            <div
+              className="flex flex-wrap justify-center leading-tight"
+              style={{
+                fontSize: isImmersive ? 'clamp(2.5rem,6vw,5rem)' : 'clamp(1.8rem,4vw,3rem)',
+                fontWeight: 800,
+                gap: '0.5rem 1rem',
+              }}
+            >
+              {wordTokens.map((token, i) => (
+                <span
+                  key={i}
+                  style={{
+                    color: i === 0 ? '#a5b4fc' : '#e2e8f0',
+                    textShadow: i === 0 ? '0 0 28px rgba(165,180,252,0.4)' : 'none',
+                  }}
+                >
+                  {token.text}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/5">
+      <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/[0.04]">
         <div
-          className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300"
-          style={{ width: `${progress}%` }}
+          className="h-full bg-gradient-to-r from-indigo-600 via-violet-500 to-purple-500"
+          style={{ width: `${progress}%`, transition: 'width 0.4s linear' }}
         />
       </div>
+
+      {/* HUD — card mode only, no overlap in fullscreen */}
+      {!isImmersive && (
+        <div className="absolute bottom-1 left-0 right-0 px-5 pb-4 flex items-end justify-between z-20">
+          <div className="flex flex-col gap-1">
+            <span className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">سرعة</span>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => onSpeedChange(-25)} className="w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 text-slate-500 hover:text-white text-xs font-bold transition-all">−</button>
+              <span className="text-indigo-400 font-black text-sm tabular-nums w-11 text-center">{targetWPM}</span>
+              <button onClick={() => onSpeedChange(25)}  className="w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 text-slate-500 hover:text-white text-xs font-bold transition-all">+</button>
+            </div>
+          </div>
+          <div className="flex gap-5 text-center">
+            <div>
+              <div className="text-base font-black text-white tabular-nums">{formatTime(elapsed)}</div>
+              <div className="text-[7px] text-slate-600 uppercase tracking-widest">وقت</div>
+            </div>
+            <div>
+              <div className="text-base font-black text-indigo-400 tabular-nums">{Math.round(progress)}%</div>
+              <div className="text-[7px] text-slate-600 uppercase tracking-widest">تقدم</div>
+            </div>
+          </div>
+          <div className="scale-[0.65] origin-bottom-right">
+            <SpeedRing wpm={wpm} targetWPM={targetWPM} />
+          </div>
+        </div>
+      )}
+
+      {/* Keyframe animation — made softer for ultra-smooth high-speed reading */}
+      <style>{`
+        @keyframes rsvpFlash {
+          0%   { opacity: 0.6; transform: scale(0.98); }
+          100% { opacity: 1;   transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -232,7 +321,7 @@ export function ReadingSpeedTool() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [useOcr, setUseOcr] = useState(false);
-  const [language, setLanguage] = useState<Language>('arabic');
+  const [language, setLanguage] = useState<Language>('ar');
 
   // ── Session State ───────────────────────────────────────────────────────────
   const [sessionState, setSessionState] = useState<SessionState>('idle');
@@ -295,13 +384,13 @@ export function ReadingSpeedTool() {
   const mdInputRef = useRef<HTMLInputElement>(null);
 
   const processText = useCallback((text: string, name: string) => {
-    const { tokens, language: detectedLang } = tokenize(text);
+    const tokens = tokenize(text);
+    const detectedLang: Language = /[\u0600-\u06FF]/.test(text) ? 'ar' : 'en';
     tokensRef.current = tokens;
     setLanguage(detectedLang);
 
-    // Build initial chunks
-    const cs = chunkSizeFromWPM(targetWPM);
-    chunksRef.current = buildChunks(tokens, cs, detectedLang);
+    // Build initial chunks using the current chunk-size setting (auto or manual)
+    chunksRef.current = buildChunks(tokens, chunkSize, detectedLang);
 
     const wordCount = tokens.filter(t => t.type === 'word').length;
     setTotalWords(wordCount);
@@ -312,7 +401,7 @@ export function ReadingSpeedTool() {
     setSessionState('idle');
     setElapsed(0);
     setLastSession(null);
-  }, [targetWPM]);
+  }, [chunkSize]);
 
   const handleMdFilePick = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -379,20 +468,36 @@ export function ReadingSpeedTool() {
 
   const handlePickFile = fileMode === 'md' ? () => mdInputRef.current?.click() : handlePdfFilePick;
 
-  // ── Rebuild chunks when targetWPM or chunkSize changes ─────────────────────
+  // ── Rebuild chunks when autoChunkSize / manualChunkSize / language changes ──
   useEffect(() => {
-    if (tokensRef.current.length > 0) {
-      chunksRef.current = buildChunks(tokensRef.current, chunkSize, language);
-      // Keep position approximately
+    if (tokensRef.current.length === 0) return;
+    const wordOffset = countWordsInChunks(chunksRef.current, chunkIndex);
+    chunksRef.current = buildChunks(tokensRef.current, chunkSize, language);
+    const newIdx = Math.min(
+      chunkIndexForWord(chunksRef.current, wordOffset),
+      Math.max(0, chunksRef.current.length - 1),
+    );
+    setChunkIndex(newIdx);
+    if (sessionState === 'reading') {
+      if (rsvpTimerRef.current) { clearTimeout(rsvpTimerRef.current); rsvpTimerRef.current = null; }
+      // Use wall-clock elapsed so effective WPM is computed correctly
+      const wallElapsedMs = Date.now() - sessionStartMs.current + pausedElapsedMs.current;
+      scheduleNextChunk(newIdx, wallElapsedMs);
     }
-  }, [chunkSize, language]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoChunkSize, manualChunkSize, language]);
+
+  // ── State Ref for closures ──────────────────────────────────────────────────
+  const stateRef = useRef({ targetWPM, chunkSize, readerMode, chunkIndex });
+  useEffect(() => {
+    stateRef.current = { targetWPM, chunkSize, readerMode, chunkIndex };
+  }, [targetWPM, chunkSize, readerMode, chunkIndex]);
 
   // ── Smart Pause Detection ───────────────────────────────────────────────────
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && sessionState === 'reading') {
-        trackerRef.current.recordBlur();
-        handlePause();
+        handlePause(true);
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -401,6 +506,8 @@ export function ReadingSpeedTool() {
 
   // ── Controls ─────────────────────────────────────────────────────────────────
   const handleStart = () => {
+    // effectiveStartMs = a virtual timestamp such that (Date.now() - effectiveStartMs) = 0
+    // We store it so the scheduler can compute wall-clock elapsed directly.
     sessionStartMs.current = Date.now();
     pausedElapsedMs.current = 0;
     setElapsed(0);
@@ -409,22 +516,27 @@ export function ReadingSpeedTool() {
     setSessionState('reading');
     setLiveWPM(0);
     trackerRef.current.start();
-    scheduleNextChunk(0, 0);
+    if (fileMode === 'md') {
+      scheduleNextChunk(0, sessionStartMs.current);
+    }
   };
 
-  const handlePause = () => {
-    pausedElapsedMs.current = (Date.now() - sessionStartMs.current) + pausedElapsedMs.current;
+  const handlePause = (isAuto: boolean = false) => {
+    // Accumulate elapsed BEFORE clearing sessionStartMs
+    pausedElapsedMs.current += Date.now() - sessionStartMs.current;
     sessionStartMs.current = 0;
     setSessionState('paused');
     if (rsvpTimerRef.current) { clearTimeout(rsvpTimerRef.current); rsvpTimerRef.current = null; }
-    trackerRef.current.recordPause();
+    trackerRef.current.pause(isAuto);
   };
 
   const handleResume = () => {
-    sessionStartMs.current = Date.now();
+    // Shift sessionStartMs so that (Date.now() - sessionStartMs) = pausedElapsedMs
+    // This makes the warm-up correctly count cumulative active reading time
+    sessionStartMs.current = Date.now() - pausedElapsedMs.current;
     setSessionState('reading');
-    trackerRef.current.recordResume();
-    scheduleNextChunk(chunkIndex, elapsed * 1000);
+    trackerRef.current.resume();
+    scheduleNextChunk(chunkIndex, sessionStartMs.current);
   };
 
   const handleStop = () => {
@@ -434,35 +546,57 @@ export function ReadingSpeedTool() {
     if (rsvpTimerRef.current) { clearTimeout(rsvpTimerRef.current); rsvpTimerRef.current = null; }
   };
 
-  const handleFinish = useCallback(() => {
+  const handleFinish = useCallback((finalIdx?: number) => {
     if (rsvpTimerRef.current) { clearTimeout(rsvpTimerRef.current); rsvpTimerRef.current = null; }
-    const wordsRead = chunkIndex; // approximate
-    const report = trackerRef.current.generateReport(fileName!, fileMode, totalWords, wordsRead);
+    
+    const s = stateRef.current;
+    const actualIdx = typeof finalIdx === 'number' ? finalIdx : s.chunkIndex;
+    
+    const wordsRead = countWordsInChunks(chunksRef.current, actualIdx);
+    const report = trackerRef.current.finish(wordsRead, totalWords, fileName || 'Document', s.readerMode, s.targetWPM, s.chunkSize);
+    
     setLastSession(report);
     setSessions(prev => [report, ...prev.slice(0, 9)]);
     setSessionState('done');
     if (report.averageWPM > 0) setTargetWPM(report.averageWPM);
     localStorage.setItem('fast_reading_last_wpm', String(report.averageWPM));
-  }, [chunkIndex, fileName, fileMode, totalWords]);
+  }, [fileName, totalWords]);
 
-  // ── RSVP Timer with intelligent timing ─────────────────────────────────────
-  const scheduleNextChunk = useCallback((idx: number, elapsedMs: number) => {
+  // ── RSVP Scheduler ────────────────────────────────────────────────────────
+  // We pass the *session-start timestamp* (ms) so each call computes
+  // effective WPM from real wall-clock elapsed time, not accumulated dwell.
+  const scheduleNextChunk = useCallback((idx: number, sessionStartTimestamp: number, overrideWpm?: number) => {
     if (idx >= chunksRef.current.length) {
-      handleFinish();
+      handleFinish(idx);
       return;
     }
-    const chunk = chunksRef.current[idx];
-    const currentWPM = effectiveWPM(targetWPM, elapsedMs);
-    const dwell = chunkDwellMs(chunk, currentWPM);
+    const chunk    = chunksRef.current[idx];
+    const wpmToUse = overrideWpm ?? stateRef.current.targetWPM;
+    // Real wall-clock elapsed since session start (excludes paused time via offset)
+    const wallElapsedMs = Date.now() - sessionStartTimestamp;
+    const currentWPM    = effectiveWPM(wpmToUse, wallElapsedMs);
+    const dwell         = chunkDwellMs(chunk, currentWPM);
 
-    trackerRef.current.recordDisplay(idx, dwell);
+    trackerRef.current.recordDisplay({ ...chunk[0], dwellMs: dwell, chunkGroup: idx });
     setChunkIndex(idx);
     setLiveWPM(Math.round(currentWPM));
 
     rsvpTimerRef.current = window.setTimeout(() => {
-      scheduleNextChunk(idx + 1, elapsedMs + dwell);
+      scheduleNextChunk(idx + 1, sessionStartTimestamp, overrideWpm);
     }, dwell);
-  }, [targetWPM, handleFinish]);
+  }, [handleFinish]);
+
+  const handleSpeedChange = useCallback((delta: number) => {
+    setTargetWPM(v => {
+      const newWpm = Math.max(50, Math.min(1000, v + delta));
+      if (sessionState === 'reading' && rsvpTimerRef.current) {
+        clearTimeout(rsvpTimerRef.current);
+        // Resume from current chunk with new WPM; pass the same virtual start timestamp
+        scheduleNextChunk(stateRef.current.chunkIndex, sessionStartMs.current, newWpm);
+      }
+      return newWpm;
+    });
+  }, [sessionState, scheduleNextChunk]);
 
   // ── Keyboard Shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -472,14 +606,14 @@ export function ReadingSpeedTool() {
         e.preventDefault();
         if (sessionState === 'reading') handlePause();
         else if (sessionState === 'paused') handleResume();
-      } else if (e.code === 'ArrowUp') setTargetWPM(v => Math.min(1000, v + 25));
-      else if (e.code === 'ArrowDown') setTargetWPM(v => Math.max(50, v - 25));
+      } else if (e.code === 'ArrowUp') handleSpeedChange(25);
+      else if (e.code === 'ArrowDown') handleSpeedChange(-25);
       else if (e.code === 'Escape') setIsImmersive(false);
       else if (e.code === 'KeyF') setIsImmersive(v => !v);
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [readerMode, mdText, sessionState, handlePause, handleResume]);
+  }, [readerMode, mdText, sessionState, handlePause, handleResume, handleSpeedChange]);
 
   // Auto-scroll normal reader
   useEffect(() => {
@@ -546,49 +680,29 @@ export function ReadingSpeedTool() {
 
   const handleGeneratePlan = () => {
     if (!wordIndex?.length) { setError('يجب فهرسة الكتاب أولاً'); return; }
-    const diffMult = difficulty === 'easy' ? 1.2 : difficulty === 'hard' ? 0.8 : 1.0;
-    const effectiveWPMPlan = targetWPM * diffMult * feedbackFactor;
-    const wordsPerDay = effectiveWPMPlan * dailyMinutes;
-    const newPlan: any[] = [];
-    let day = 1, wi = 0;
-    const startDT = new Date(startDate);
-
-    while (wi < wordIndex.length) {
-      let dayWords = 0;
-      const dayPages: number[] = [];
-      const startPg = wordIndex[wi].page;
-      while (wi < wordIndex.length && dayWords < wordsPerDay) {
-        const p = wordIndex[wi];
-        if (dayWords > 0 && (dayWords + p.word_count) > wordsPerDay * 1.2) break;
-        dayWords += p.word_count;
-        dayPages.push(p.page);
-        wi++;
-      }
-      if (dayPages.length === 0) break;
-      const endPg = dayPages[dayPages.length - 1];
-      const date = new Date(startDT);
-      date.setDate(date.getDate() + (day - 1));
-      if (includeRestDays && date.getDay() === restDayOfWeek) {
-        newPlan.push({ day, date: date.toISOString().split('T')[0], chapter: 'يوم راحة ☕', pages: '-', page_count: 0, word_count: 0, isRest: true });
-        day++; continue;
-      }
-      newPlan.push({
-        day, date: date.toISOString().split('T')[0],
-        chapter: `ص ${startPg} – ${endPg}`,
-        pages: startPg === endPg ? `${startPg}` : `${startPg} – ${endPg}`,
-        page_count: endPg - startPg + 1, word_count: dayWords,
-      });
-      day++;
-    }
+    const newPlan = generateReadingPlan(
+      wordIndex,
+      targetWPM,
+      dailyMinutes,
+      startDate,
+      difficulty,
+      feedbackFactor,
+      includeRestDays,
+      restDayOfWeek,
+      syncWithChapters,
+      bookmarks
+    );
     setPlan(newPlan);
     setIsPlanGenerated(true);
   };
 
   const handleDayRating = (day: number, rating: 'easy' | 'good' | 'hard') => {
     setDayRatings(p => ({ ...p, [day]: rating }));
-    if (rating === 'hard') setFeedbackFactor(f => Math.max(0.5, f - 0.05));
-    else if (rating === 'easy') setFeedbackFactor(f => Math.min(2.0, f + 0.05));
-    localStorage.setItem('fast_reading_feedback_factor', JSON.stringify(feedbackFactor));
+    let newFactor = feedbackFactor;
+    if (rating === 'hard') newFactor = Math.max(0.5, feedbackFactor - 0.05);
+    else if (rating === 'easy') newFactor = Math.min(2.0, feedbackFactor + 0.05);
+    setFeedbackFactor(newFactor);
+    localStorage.setItem('fast_reading_feedback_factor', JSON.stringify(newFactor));
   };
 
   // ── Derived state ─────────────────────────────────────────────────────────────
@@ -615,10 +729,29 @@ export function ReadingSpeedTool() {
   }
 
   // ── Immersive Overlay ─────────────────────────────────────────────────────────
+  //
+  // Layout: fixed full-screen column
+  //   ┌──────────────────────────────┐  ← top HUD (auto-hides, 56px)
+  //   │  word display area (flex-1)  │  ← all available height
+  //   ├──────────────────────────────┤  ← stats bar (72px)
+  //   │  controls row (auto-hides)   │  ← bottom controls (72px)
+  //   └──────────────────────────────┘
+  //
+  // RSVPDisplay in immersive mode renders ONLY the word + ambient glow.
+  // All HUD elements (speed, stats, ring, progress bar) live here so there
+  // is zero overlap between the display and the controls.
+
   const immersiveOverlay = isImmersive && sessionState !== 'idle' && sessionState !== 'done' && (
-    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col" dir={language === 'arabic' ? 'rtl' : 'ltr'}>
-      {/* Top HUD */}
-      <div className="flex items-center justify-between px-6 py-4 opacity-0 hover:opacity-100 transition-opacity duration-300">
+    <div 
+      className="fixed inset-0 z-50 bg-slate-950 flex flex-col" 
+      dir={language === 'ar' ? 'rtl' : 'ltr'}
+      onWheel={(e) => {
+        if (Math.abs(e.deltaY) > 0) handleSpeedChange(e.deltaY > 0 ? -10 : 10);
+      }}
+    >
+
+      {/* ── Top HUD (file name + close) — fades in on hover ── */}
+      <div className="flex items-center justify-between px-6 py-3 opacity-0 hover:opacity-100 transition-opacity duration-300 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
           <span className="text-slate-400 text-sm font-medium">{fileName}</span>
@@ -631,38 +764,91 @@ export function ReadingSpeedTool() {
         </button>
       </div>
 
-      {/* Main RSVP */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-full max-w-2xl px-8">
-          <RSVPDisplay
-            currentChunk={currentChunk}
-            nextChunk={nextChunk}
-            language={language}
-            progress={progressPct}
-            wpm={liveWPM}
-            elapsed={elapsed}
-            targetWPM={targetWPM}
-            sessionState={sessionState}
-            onTogglePlay={() => sessionState === 'reading' ? handlePause() : handleResume()}
-            onSpeedChange={(d) => setTargetWPM(v => Math.max(50, Math.min(1000, v + d)))}
-            isImmersive
-          />
+      {/* ── Word display — takes all remaining space ── */}
+      <div className="flex-1 flex items-center justify-center min-h-0 relative">
+        {/* Ambient glow */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-48 bg-indigo-600/8 blur-3xl rounded-full" />
+        </div>
+        {/* Eye guide */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+          <div className="w-[2px] h-24 bg-gradient-to-b from-transparent via-indigo-500/25 to-transparent" />
+        </div>
+        {/* Next word preview */}
+        <div className="absolute top-[calc(50%-6rem)] left-0 right-0 flex justify-center pointer-events-none">
+          <span className="text-slate-600 text-sm">
+            {nextChunk.map(t => t.text).join(' ')}
+          </span>
+        </div>
+        {/* Main word */}
+        <div
+          className="text-center w-full px-12 z-10"
+          style={{ fontFamily: language === 'ar' ? "'IBM Plex Sans Arabic', sans-serif" : 'inherit' }}
+        >
+          {currentChunk.length === 1 ? (
+            <div className="text-7xl md:text-9xl font-extrabold tracking-tight select-none">
+              <OrpWord word={currentChunk[0].text} language={language} />
+            </div>
+          ) : (
+            <div className="text-4xl md:text-6xl font-bold text-slate-100 flex flex-wrap justify-center gap-4 select-none">
+              {currentChunk.map((token, i) => (
+                <span key={i} className={i === 0 ? 'text-indigo-300' : 'text-slate-200'}>{token.text}</span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Bottom controls */}
-      <div className="flex items-center justify-center gap-4 pb-8 opacity-0 hover:opacity-100 transition-opacity duration-300">
+      {/* ── Stats bar — always visible ── */}
+      <div className="shrink-0 flex items-center justify-between px-8 py-4 border-t border-white/5">
+        {/* Speed control */}
+        <div className="flex flex-col gap-1">
+          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Speed</span>
+          <div className="flex items-center gap-3">
+            <button onClick={() => handleSpeedChange(-25)} className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white font-bold transition-all">−</button>
+            <span className="text-indigo-400 font-black text-base tabular-nums w-14 text-center">{targetWPM} WPM</span>
+            <button onClick={() => handleSpeedChange(25)} className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white font-bold transition-all">+</button>
+          </div>
+        </div>
+
+        {/* Center: elapsed + progress */}
+        <div className="flex items-center gap-8 text-center">
+          <div>
+            <div className="text-xl font-black text-white tabular-nums">{formatTime(elapsed)}</div>
+            <div className="text-[9px] text-slate-500 uppercase tracking-widest">Elapsed</div>
+          </div>
+          <div>
+            <div className="text-xl font-black text-indigo-400 tabular-nums">{Math.round(progressPct)}%</div>
+            <div className="text-[9px] text-slate-500 uppercase tracking-widest">Progress</div>
+          </div>
+        </div>
+
+        {/* Right: WPM ring */}
+        <div className="scale-75 origin-center">
+          <SpeedRing wpm={liveWPM} targetWPM={targetWPM} />
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-1 bg-white/5 shrink-0">
+        <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300" style={{ width: `${progressPct}%` }} />
+      </div>
+
+      {/* ── Control row — fades in on hover ── */}
+      <div className="shrink-0 flex items-center justify-center gap-4 py-5 opacity-0 hover:opacity-100 transition-opacity duration-300">
         <button
           onClick={() => sessionState === 'reading' ? handlePause() : handleResume()}
-          className="flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-xl"
+          className="flex items-center gap-3 px-8 py-3 rounded-2xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-xl"
         >
-          {sessionState === 'reading' ? <><Pause size={20} fill="currentColor" /> إيقاف مؤقت</> : <><Play size={20} fill="currentColor" /> استئناف</>}
+          {sessionState === 'reading'
+            ? <><Pause size={18} fill="currentColor" /> إيقاف مؤقت</>
+            : <><Play  size={18} fill="currentColor" /> استئناف</>}
         </button>
-        <button onClick={handleFinish} className="px-6 py-4 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-all">
-          <CheckCircle size={20} />
+        <button onClick={handleFinish} className="px-6 py-3 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-all flex items-center gap-2">
+          <CheckCircle size={18} /> انتهيت
         </button>
-        <button onClick={handleStop} className="px-6 py-4 rounded-2xl font-bold text-slate-400 bg-white/5 hover:bg-white/10 transition-all">
-          <Square size={20} />
+        <button onClick={handleStop} className="p-3 rounded-2xl text-slate-400 bg-white/5 hover:bg-white/10 transition-all">
+          <Square size={18} />
         </button>
       </div>
     </div>
@@ -698,7 +884,7 @@ export function ReadingSpeedTool() {
               <div
                 key={lineIdx}
                 className={`flex flex-wrap gap-1.5 ${isHeading ? 'text-4xl font-black text-white mb-4 mt-8' : 'text-2xl leading-relaxed'}`}
-                style={{ fontFamily: language === 'arabic' ? "'IBM Plex Sans Arabic', sans-serif" : "inherit", direction: language === 'arabic' ? 'rtl' : 'ltr' }}
+                style={{ fontFamily: language === 'ar' ? "'IBM Plex Sans Arabic', sans-serif" : "inherit", direction: language === 'ar' ? 'rtl' : 'ltr' }}
               >
                 {words.map((word, wi) => {
                   const thisChunkIdx = globalChunkIdx++;
@@ -806,7 +992,7 @@ export function ReadingSpeedTool() {
                     )}
                     {language && (
                       <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold">
-                        {language === 'arabic' ? 'عربي' : language === 'latin' ? 'إنجليزي' : 'مختلط'}
+                        {language === 'ar' ? 'عربي' : language === 'en' ? 'إنجليزي' : 'مختلط'}
                       </span>
                     )}
                   </div>
@@ -871,16 +1057,14 @@ export function ReadingSpeedTool() {
                     wpm={liveWPM}
                     elapsed={elapsed}
                     targetWPM={targetWPM}
-                    sessionState={sessionState}
-                    onTogglePlay={() => sessionState === 'reading' ? handlePause() : handleResume()}
-                    onSpeedChange={(d) => setTargetWPM(v => Math.max(50, Math.min(1000, v + d)))}
+                    onSpeedChange={handleSpeedChange}
                   />
                 ) : (
                   renderNormalReader()
                 )}
 
                 {/* Chunk size settings for RSVP */}
-                {readerMode === 'rsvp' && sessionState === 'idle' && (
+                {readerMode === 'rsvp' && (
                   <div className="px-5 py-4 border-t border-gray-50 bg-gray-50/50 flex items-center gap-6 flex-wrap">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-gray-500">حجم المقطع:</span>
@@ -888,18 +1072,27 @@ export function ReadingSpeedTool() {
                         <input type="checkbox" className="w-3.5 h-3.5 text-indigo-600 rounded" checked={autoChunkSize} onChange={e => setAutoChunkSize(e.target.checked)} />
                         <span className="text-xs text-gray-600 font-medium">تلقائي</span>
                       </label>
-                      {!autoChunkSize && (
-                        <div className="flex gap-1">
-                          {[1, 2, 3, 4].map(c => (
-                            <button key={c} onClick={() => setManualChunkSize(c)} className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${manualChunkSize === c ? 'bg-indigo-600 text-white' : 'bg-white text-gray-400 border border-gray-200 hover:border-indigo-300'}`}>
-                              {c}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      <div className="flex gap-1 flex-wrap">
+                        {[1, 2, 3, 4, 5, 6, 8, 10].map(c => (
+                          <button
+                            key={c}
+                            onClick={() => {
+                              setAutoChunkSize(false);
+                              setManualChunkSize(c);
+                            }}
+                            className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${
+                              !autoChunkSize && manualChunkSize === c
+                                ? 'bg-indigo-600 text-white shadow-sm'
+                                : 'bg-white text-gray-400 border border-gray-200 hover:border-indigo-300 hover:text-indigo-500'
+                            } ${autoChunkSize ? 'opacity-50 grayscale' : ''}`}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
                       {autoChunkSize && (
-                        <span className="text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-lg">
-                          {chunkSize} كلمة ← {targetWPM} WPM
+                        <span className="text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-lg mr-1">
+                          (الحالي: {chunkSize})
                         </span>
                       )}
                     </div>
@@ -958,12 +1151,12 @@ export function ReadingSpeedTool() {
                   </div>
                 </div>
                 {/* Warm-up indicator */}
-                {sessionState === 'reading' && elapsed < 90 && (
+                {sessionState === 'reading' && elapsed < WARM_UP_SECONDS && (
                   <div className="mt-4 flex items-center gap-2">
                     <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-amber-400/70 transition-all duration-500" style={{ width: `${(elapsed / 90) * 100}%` }} />
+                      <div className="h-full bg-amber-400/70 transition-all duration-500" style={{ width: `${(elapsed / WARM_UP_SECONDS) * 100}%` }} />
                     </div>
-                    <span className="text-[10px] text-amber-400 font-bold">الإحماء ({90 - elapsed}ث)</span>
+                    <span className="text-[10px] text-amber-400 font-bold">الإحماء ({WARM_UP_SECONDS - elapsed}ث)</span>
                   </div>
                 )}
               </div>

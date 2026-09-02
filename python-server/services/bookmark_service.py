@@ -350,67 +350,108 @@ class BookmarkService:
                 raise Exception("Output directory is required")
             doc = fitz.open(pdf_path)
             toc = doc.get_toc()
-            total_pages = doc.page_count
-            base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-
             if not toc:
                 doc.close()
                 raise Exception("No bookmarks found in PDF")
 
             # Sequential level mapping to satisfy PyMuPDF
             toc = BookmarkService.normalize_toc_levels(toc)
-
-            # Filter by level if needed
-            if ignore_hierarchy:
-                sections = list(enumerate(toc))
-                # Force all sections to level 1 for the split logic
-                sections = [(i, [1, item[1], item[2]]) for i, item in sections]
-            elif target_level is not None:
-                sections = [(i, item) for i, item in enumerate(toc) if item[0] == target_level]
-            elif level_1_only:
-                sections = [(i, item) for i, item in enumerate(toc) if item[0] == 1]
-            else:
-                sections = list(enumerate(toc))
-
-            # Filter by selected indices if provided
-            if selected_indices is not None:
-                sections = [(i, item) for i, item in sections if i in selected_indices]
-
-            if not sections:
-                doc.close()
-                raise Exception("No bookmarks match the selection criteria")
-
-            output_files = []
             os.makedirs(output_dir, exist_ok=True)
 
-            for idx, (toc_idx, section) in enumerate(sections):
-                level, title, start_page = section[0], section[1], section[2]
+            base_name = os.path.splitext(os.path.basename(pdf_path))[0]
 
-                # Find end page
-                # If ignore_hierarchy is True, we split exactly at the next bookmark
-                # If ignore_hierarchy is False (respecting levels), we find the next bookmark at the SAME or HIGHER level
-                end_page = total_pages
-                for next_item in toc[toc_idx + 1:]:
-                    if ignore_hierarchy or next_item[0] <= level:
-                        end_page = next_item[2] - 1
-                        break
+            # Corrupt source PDFs (broken/incremental xref tables, dangling
+            # object refs, XObjects without a /Subtype) can break insert_pdf or
+            # save partway through the split. Escalate repairs on ANY failure:
+            # retry once against a garbage-collected, sanitized rebuild of the
+            # source. Filenames are deterministic, so the retry simply
+            # overwrites any partial files from the first attempt.
+            last_error = None
+            for attempt in range(2):
+                try:
+                    result = BookmarkService._split_sections(
+                        doc, toc, doc.page_count, base_name, output_dir,
+                        level_1_only, preserve_bookmarks, selected_indices,
+                        use_bookmark_titles, ignore_hierarchy, target_level
+                    )
+                    # Sever the exception/traceback reference cycle before
+                    # returning, or the grafted documents stay alive and keep
+                    # the source file locked on Windows.
+                    last_error = None
+                    return result
+                except Exception as e:
+                    last_error = e
+                    try:
+                        doc.close()
+                    except Exception:
+                        pass
+                    doc = BookmarkService._repair_source_doc(pdf_path)
+                    toc = BookmarkService.normalize_toc_levels(doc.get_toc())
+            try:
+                doc.close()
+            except Exception:
+                pass
+            raise last_error
+        except Exception as e:
+            raise Exception(f"Split by bookmarks failed: {str(e)}")
 
-                # Ensure valid page range
-                start_page = max(1, start_page)
-                end_page = min(total_pages, max(start_page, end_page))
+    @staticmethod
+    def _split_sections(doc, toc, total_pages, base_name, output_dir,
+                        level_1_only, preserve_bookmarks, selected_indices,
+                        use_bookmark_titles, ignore_hierarchy, target_level):
+        """Core split loop. Output filenames are deterministic, so a retry
+        after repairing the source simply overwrites partial files."""
 
-                # Create safe filename
-                if use_bookmark_titles:
-                    safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_', 'أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي', 'ء', 'ى', 'ة')).strip()
-                    safe_title = safe_title[:50]  # Limit length
-                    output_filename = f"{idx+1:02d}_{safe_title}.pdf"
-                else:
-                    output_filename = f"{base_name}_part{idx+1:03d}.pdf"
+        # Filter by level if needed
+        if ignore_hierarchy:
+            sections = list(enumerate(toc))
+            # Force all sections to level 1 for the split logic
+            sections = [(i, [1, item[1], item[2]]) for i, item in sections]
+        elif target_level is not None:
+            sections = [(i, item) for i, item in enumerate(toc) if item[0] == target_level]
+        elif level_1_only:
+            sections = [(i, item) for i, item in enumerate(toc) if item[0] == 1]
+        else:
+            sections = list(enumerate(toc))
 
-                output_path = os.path.join(output_dir, output_filename)
+        # Filter by selected indices if provided
+        if selected_indices is not None:
+            sections = [(i, item) for i, item in sections if i in selected_indices]
 
-                # Extract pages (convert to 0-based index)
-                new_doc = fitz.open()
+        if not sections:
+            raise Exception("No bookmarks match the selection criteria")
+
+        output_files = []
+
+        for idx, (toc_idx, section) in enumerate(sections):
+            level, title, start_page = section[0], section[1], section[2]
+
+            # Find end page
+            # If ignore_hierarchy is True, we split exactly at the next bookmark
+            # If ignore_hierarchy is False (respecting levels), we find the next bookmark at the SAME or HIGHER level
+            end_page = total_pages
+            for next_item in toc[toc_idx + 1:]:
+                if ignore_hierarchy or next_item[0] <= level:
+                    end_page = next_item[2] - 1
+                    break
+
+            # Ensure valid page range
+            start_page = max(1, start_page)
+            end_page = min(total_pages, max(start_page, end_page))
+
+            # Create safe filename
+            if use_bookmark_titles:
+                safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_', 'أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي', 'ء', 'ى', 'ة')).strip()
+                safe_title = safe_title[:50]  # Limit length
+                output_filename = f"{idx+1:02d}_{safe_title}.pdf"
+            else:
+                output_filename = f"{base_name}_part{idx+1:03d}.pdf"
+
+            output_path = os.path.join(output_dir, output_filename)
+
+            # Extract pages (convert to 0-based index)
+            new_doc = fitz.open()
+            try:
                 new_doc.insert_pdf(doc, from_page=start_page - 1, to_page=end_page - 1)
 
                 # Optionally preserve sub-bookmarks
@@ -429,23 +470,79 @@ class BookmarkService:
                         new_doc.set_toc(sub_toc)
 
                 new_doc.save(output_path)
+            finally:
                 new_doc.close()
-                output_files.append({
-                    "path": output_path,
-                    "title": title,
-                    "start_page": start_page,
-                    "end_page": end_page,
-                    "page_count": end_page - start_page + 1
-                })
+            output_files.append({
+                "path": output_path,
+                "title": title,
+                "start_page": start_page,
+                "end_page": end_page,
+                "page_count": end_page - start_page + 1
+            })
 
+        return {
+            "files_created": [f["path"] for f in output_files],
+            "files_info": output_files,
+            "total_files": len(output_files)
+        }
+
+    @staticmethod
+    def _repair_source_doc(pdf_path: str):
+        """Rebuild a PDF with a corrupt/incremental xref table so that
+        insert_pdf stops raising 'source object number out of range'.
+        Garbage-collected save normalizes and renumbers all objects and nulls
+        dangling references; broken resource entries are then removed from
+        every page so save/copy operations don't choke on them either."""
+        doc = fitz.open(pdf_path)
+        try:
+            data = doc.tobytes(garbage=4, deflate=True, clean=True)
+        finally:
             doc.close()
-            return {
-                "files_created": [f["path"] for f in output_files],
-                "files_info": output_files,
-                "total_files": len(output_files)
-            }
-        except Exception as e:
-            raise Exception(f"Split by bookmarks failed: {str(e)}")
+        doc = fitz.open(stream=data, filetype="pdf")
+        BookmarkService._sanitize_resources(doc)
+        return doc
+
+    @staticmethod
+    def _sanitize_resources(doc):
+        """Remove references to invalid objects and XObjects without a /Subtype
+        from every page's /Resources. Keeps corrupt content from breaking
+        insert_pdf / save of the split outputs."""
+        xref_len = doc.xref_length()
+        for page in doc:
+            rtype, rval = doc.xref_get_key(page.xref, "/Resources")
+            if rtype == "xref":
+                res_xref = int(rval.split()[0])
+                if 0 < res_xref < xref_len:
+                    BookmarkService._sanitize_resource_dict(doc, res_xref, xref_len)
+
+    @staticmethod
+    def _sanitize_resource_dict(doc, res_xref, xref_len):
+        for key in ("/XObject", "/Font", "/ExtGState", "/Pattern", "/Shading",
+                    "/ColorSpace", "/Properties"):
+            t, v = doc.xref_get_key(res_xref, key)
+            if t == "null":
+                continue
+            if t != "xref":
+                continue
+            sub_xref = int(v.split()[0])
+            if not (0 < sub_xref < xref_len):
+                doc.xref_set_key(res_xref, key, "null")
+                continue
+            for name in doc.xref_get_keys(sub_xref):
+                et, ev = doc.xref_get_key(sub_xref, "/" + name)
+                drop = False
+                if et == "null":
+                    drop = True
+                elif et == "xref":
+                    obj = int(ev.split()[0])
+                    if not (0 < obj < xref_len):
+                        drop = True
+                    elif key == "/XObject":
+                        st, _ = doc.xref_get_key(obj, "/Subtype")
+                        if st == "null":
+                            drop = True
+                if drop:
+                    doc.xref_set_key(sub_xref, "/" + name, "null")
 
     @staticmethod
     def transfer_bookmarks(source_pdf: str, target_pdf: str, output_path: str) -> Dict[str, Any]:

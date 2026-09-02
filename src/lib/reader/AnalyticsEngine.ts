@@ -11,19 +11,19 @@ export class AnalyticsEngine {
 
   getOverallWpm(): number {
     if (this.sessions.length === 0) return 0;
-    const total = this.sessions.reduce((s, r) => s + r.wpm, 0);
+    const total = this.sessions.reduce((s, r) => s + r.averageWPM, 0);
     return Math.round(total / this.sessions.length);
   }
 
   getBestWpm(): number {
     if (this.sessions.length === 0) return 0;
-    return Math.max(...this.sessions.map(s => s.wpm));
+    return Math.max(...this.sessions.map(s => s.averageWPM));
   }
 
   getSpeedImprovement(): number {
     if (this.sessions.length < 2) return 0;
-    const first = this.sessions[0].wpm;
-    const last = this.sessions[this.sessions.length - 1].wpm;
+    const first = this.sessions[0].averageWPM;
+    const last = this.sessions[this.sessions.length - 1].averageWPM;
     if (first === 0) return 0;
     return Math.round(((last - first) / first) * 100);
   }
@@ -100,15 +100,15 @@ export class AnalyticsEngine {
     const cutoff = new Date(now);
     cutoff.setDate(cutoff.getDate() - days);
 
-    const dayMap = new Map<string, { minutes: number; wpm: number; words: number; sessions: number }>();
+    const dayMap = new Map<string, { minutes: number; averageWPM: number; words: number; sessions: number }>();
 
     for (const s of this.sessions) {
       const key = s.date.split('T')[0];
       if (new Date(key) < cutoff) continue;
 
-      const existing = dayMap.get(key) ?? { minutes: 0, wpm: 0, words: 0, sessions: 0 };
+      const existing = dayMap.get(key) ?? { minutes: 0, averageWPM: 0, words: 0, sessions: 0 };
       existing.minutes += s.durationSeconds / 60;
-      existing.wpm += s.wpm;
+      existing.averageWPM += s.averageWPM;
       existing.words += s.wordsRead;
       existing.sessions += 1;
       dayMap.set(key, existing);
@@ -124,7 +124,7 @@ export class AnalyticsEngine {
       stats.push({
         date: key,
         minutes: data ? Math.round(data.minutes * 10) / 10 : 0,
-        avgWpm: data ? Math.round(data.wpm / data.sessions) : 0,
+        avgWpm: data ? Math.round(data.averageWPM / data.sessions) : 0,
         wordsRead: data?.words ?? 0,
         sessions: data?.sessions ?? 0,
       });
@@ -143,7 +143,7 @@ export class AnalyticsEngine {
     const stats: BookStat[] = [];
     for (const [fileName, reports] of bookMap) {
       const totalSeconds = reports.reduce((s, r) => s + r.durationSeconds, 0);
-      const avgWpm = Math.round(reports.reduce((s, r) => s + r.wpm, 0) / reports.length);
+      const avgWpm = Math.round(reports.reduce((s, r) => s + r.averageWPM, 0) / reports.length);
       const sorted = reports.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       const last = sorted[sorted.length - 1];
       const progress = Math.min(100, Math.round((last.wordsRead / Math.max(last.totalWords, 1)) * 100));
@@ -235,26 +235,26 @@ export class AnalyticsEngine {
   private analyzeTimeOfDay(): { period: string; avgWpm: number }[] {
     if (this.sessions.length < 5) return [];
 
-    const buckets: { period: string; hourStart: number; hourEnd: number; wpm: number[] }[] = [
-      { period: 'الصباح الباكر', hourStart: 5, hourEnd: 8, wpm: [] },
-      { period: 'الصباح', hourStart: 8, hourEnd: 12, wpm: [] },
-      { period: 'الظهر', hourStart: 12, hourEnd: 15, wpm: [] },
-      { period: 'العصر', hourStart: 15, hourEnd: 18, wpm: [] },
-      { period: 'المساء', hourStart: 18, hourEnd: 21, wpm: [] },
-      { period: 'الليل', hourStart: 21, hourEnd: 24, wpm: [] },
-      { period: 'متأخر', hourStart: 0, hourEnd: 5, wpm: [] },
+    const buckets: { period: string; hourStart: number; hourEnd: number; averageWPM: number[] }[] = [
+      { period: 'الصباح الباكر', hourStart: 5, hourEnd: 8, averageWPM: [] },
+      { period: 'الصباح', hourStart: 8, hourEnd: 12, averageWPM: [] },
+      { period: 'الظهر', hourStart: 12, hourEnd: 15, averageWPM: [] },
+      { period: 'العصر', hourStart: 15, hourEnd: 18, averageWPM: [] },
+      { period: 'المساء', hourStart: 18, hourEnd: 21, averageWPM: [] },
+      { period: 'الليل', hourStart: 21, hourEnd: 24, averageWPM: [] },
+      { period: 'متأخر', hourStart: 0, hourEnd: 5, averageWPM: [] },
     ];
 
     for (const s of this.sessions) {
       const hour = new Date(s.date).getHours();
       const bucket = buckets.find(b => hour >= b.hourStart && hour < b.hourEnd);
-      if (bucket) bucket.wpm.push(s.wpm);
+      if (bucket) bucket.averageWPM.push(s.averageWPM);
     }
 
     return buckets
       .map(b => ({
         period: b.period,
-        avgWpm: b.wpm.length > 0 ? Math.round(b.wpm.reduce((a, x) => a + x, 0) / b.wpm.length) : 0,
+        avgWpm: b.averageWPM.length > 0 ? Math.round(b.averageWPM.reduce((a, x) => a + x, 0) / b.averageWPM.length) : 0,
       }))
       .filter(b => b.avgWpm > 0)
       .sort((a, b) => b.avgWpm - a.avgWpm);

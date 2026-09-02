@@ -19,6 +19,8 @@ from api.payment_routes import router as payment_router
 from api.tahweel_routes import router as tahweel_router
 from api.task_routes import router as task_router
 
+from fastapi.concurrency import run_in_threadpool
+
 app = FastAPI(title="PDF Tools API", version="0.2.0")
 
 app.include_router(subscription_router)
@@ -312,13 +314,21 @@ class MarkdownToPDFRequest(BaseModel):
     # Typography
     font_family: str = 'Noto Naskh Arabic'
     body_size: int = 12
-    line_height: float = 2.8
+    line_height: float = 2.0
 
     # Content structure
     include_toc: bool = False
     cover_page: bool = False
     chapter_breaks: bool = True
     bookmarks_enabled: bool = True
+
+    # Cover page styling
+    cover_bg_type: str = 'gradient'  # 'white' | 'solid' | 'gradient'
+    cover_bg_color: Optional[str] = None
+    cover_gradient_from: Optional[str] = None
+    cover_gradient_to: Optional[str] = None
+    cover_accent_color: Optional[str] = None
+    cover_text_color: Optional[str] = None
 
     # Metadata
     title: Optional[str] = None
@@ -1331,7 +1341,7 @@ def extract_tables(request: ExtractTablesRequest):
 # ========== Markdown to PDF ==========
 
 @app.post("/api/markdown/to-pdf")
-def markdown_to_pdf(request: MarkdownToPDFRequest):
+async def markdown_to_pdf(request: MarkdownToPDFRequest):
     """Convert Markdown file(s) to a professional PDF"""
     try:
         if not request.markdown_files:
@@ -1359,6 +1369,13 @@ def markdown_to_pdf(request: MarkdownToPDFRequest):
             'cover_page': request.cover_page,
             'chapter_breaks': request.chapter_breaks,
             'bookmarks_enabled': request.bookmarks_enabled,
+            # Cover page styling
+            'cover_bg_type': request.cover_bg_type,
+            'cover_bg_color': request.cover_bg_color,
+            'cover_gradient_from': request.cover_gradient_from,
+            'cover_gradient_to': request.cover_gradient_to,
+            'cover_accent_color': request.cover_accent_color,
+            'cover_text_color': request.cover_text_color,
             # Metadata
             'title': request.title,
             'subtitle': request.subtitle,
@@ -1393,7 +1410,7 @@ def markdown_to_pdf(request: MarkdownToPDFRequest):
             'toc_color': request.toc_color,
         }
 
-        MarkdownService.convert_to_pdf(request.markdown_files, request.output_path, options)
+        await run_in_threadpool(MarkdownService.convert_to_pdf, request.markdown_files, request.output_path, options)
         return {"status": "success", "message": "PDF created successfully", "output_path": request.output_path}
     except HTTPException:
         raise

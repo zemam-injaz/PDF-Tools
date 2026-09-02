@@ -46,14 +46,15 @@ export const ExtractTablesTool: React.FC = () => {
     setLoading(false);
 
     if (res.success && res.data) {
-      setTableCount(res.data.table_count || 0);
+      const data = res.data as any;
+      setTableCount(data.table_count || 0);
       setStatus({
         type: 'success',
-        message: res.data.table_count > 0
-          ? `تم استخراج ${res.data.table_count} جدول بنجاح!`
+        message: data.table_count > 0
+          ? `تم استخراج ${data.table_count} جدول بنجاح!`
           : 'لم يتم العثور على جداول في الملف.',
       });
-      if (res.data.table_count > 0) setLastFolder(folder);
+      if (data.table_count > 0) setLastFolder(folder);
     } else {
       setStatus({ type: 'error', message: res.error || 'حدث خطأ' });
     }

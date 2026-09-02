@@ -9,7 +9,8 @@ function makeSession(overrides: Partial<SessionReport> & { date: string }): Sess
     totalWords: 1000,
     wordsRead: 500,
     durationSeconds: 600,
-    wpm: 250,
+    averageWPM: 250,
+    peakWPM: 300,
     targetWpm: 300,
     chunkSize: 2,
     comprehensionScore: null,
@@ -44,7 +45,7 @@ describe('AnalyticsEngine', () => {
 
   describe('with single session', () => {
     beforeEach(() => {
-      engine.loadSessions([makeSession({ date: '2024-01-15T10:00:00Z', wpm: 200 })]);
+      engine.loadSessions([makeSession({ date: '2024-01-15T10:00:00Z', averageWPM: 200 })]);
     });
 
     it('returns that session WPM', () => {
@@ -59,9 +60,9 @@ describe('AnalyticsEngine', () => {
   describe('with multiple sessions', () => {
     beforeEach(() => {
       engine.loadSessions([
-        makeSession({ date: '2024-01-01T10:00:00Z', wpm: 200 }),
-        makeSession({ date: '2024-01-08T10:00:00Z', wpm: 250 }),
-        makeSession({ date: '2024-01-15T10:00:00Z', wpm: 300 }),
+        makeSession({ date: '2024-01-01T10:00:00Z', averageWPM: 200 }),
+        makeSession({ date: '2024-01-08T10:00:00Z', averageWPM: 250 }),
+        makeSession({ date: '2024-01-15T10:00:00Z', averageWPM: 300 }),
       ]);
     });
 
@@ -94,7 +95,7 @@ describe('AnalyticsEngine', () => {
       const sessions: SessionReport[] = [];
       for (let i = 0; i < 3; i++) {
         const d = new Date(now - i * 86400000);
-        sessions.push(makeSession({ date: d.toISOString(), wpm: 250 }));
+        sessions.push(makeSession({ date: d.toISOString(), averageWPM: 250 }));
       }
       engine.loadSessions(sessions);
       expect(engine.getDailyStreak()).toBeGreaterThanOrEqual(2);
@@ -106,7 +107,7 @@ describe('AnalyticsEngine', () => {
       for (let i = 0; i < 3; i++) {
         const d = new Date(today);
         d.setDate(d.getDate() - i * 3); // every 3 days → gap
-        sessions.push(makeSession({ date: d.toISOString(), wpm: 250 }));
+        sessions.push(makeSession({ date: d.toISOString(), averageWPM: 250 }));
       }
       engine.loadSessions(sessions);
       expect(engine.getDailyStreak()).toBeLessThan(3);
@@ -124,8 +125,8 @@ describe('AnalyticsEngine', () => {
 
     it('returns book stats sorted by total minutes', () => {
       engine.loadSessions([
-        makeSession({ fileName: 'short.pdf', totalWords: 100, wordsRead: 50, durationSeconds: 120, wpm: 200, date: '2024-01-01T10:00:00Z' }),
-        makeSession({ fileName: 'long.pdf', totalWords: 1000, wordsRead: 800, durationSeconds: 2400, wpm: 250, date: '2024-01-02T10:00:00Z' }),
+        makeSession({ fileName: 'short.pdf', totalWords: 100, wordsRead: 50, durationSeconds: 120, averageWPM: 200, date: '2024-01-01T10:00:00Z' }),
+        makeSession({ fileName: 'long.pdf', totalWords: 1000, wordsRead: 800, durationSeconds: 2400, averageWPM: 250, date: '2024-01-02T10:00:00Z' }),
       ]);
 
       const stats = engine.getBookStats();
@@ -137,7 +138,7 @@ describe('AnalyticsEngine', () => {
   describe('daily stats', () => {
     it('returns stats for the last N days', () => {
       engine.loadSessions([
-        makeSession({ date: new Date().toISOString(), wpm: 300, durationSeconds: 600, wordsRead: 200 }),
+        makeSession({ date: new Date().toISOString(), averageWPM: 300, durationSeconds: 600, wordsRead: 200 }),
       ]);
 
       const stats = engine.getDailyStats(7);
@@ -151,9 +152,9 @@ describe('AnalyticsEngine', () => {
   describe('insights generation', () => {
     it('generates insights from session data', () => {
       engine.loadSessions([
-        makeSession({ date: '2024-01-01T10:00:00Z', wpm: 200 }),
-        makeSession({ date: '2024-01-02T10:00:00Z', wpm: 250 }),
-        makeSession({ date: '2024-01-03T10:00:00.000Z', wpm: 280 }),
+        makeSession({ date: '2024-01-01T10:00:00Z', averageWPM: 200 }),
+        makeSession({ date: '2024-01-02T10:00:00Z', averageWPM: 250 }),
+        makeSession({ date: '2024-01-03T10:00:00.000Z', averageWPM: 280 }),
       ]);
 
       const insights = engine.generateInsights();
@@ -169,7 +170,7 @@ describe('AnalyticsEngine', () => {
       for (let i = 0; i < 10; i++) {
         const d = new Date('2024-01-01T10:00:00Z');
         d.setDate(d.getDate() + i);
-        sessions.push(makeSession({ date: d.toISOString(), wpm: 250 + i * 5 }));
+        sessions.push(makeSession({ date: d.toISOString(), averageWPM: 250 + i * 5 }));
       }
       engine.loadSessions(sessions);
       const insights = engine.generateInsights();

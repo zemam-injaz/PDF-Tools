@@ -26,7 +26,8 @@ export interface SessionReport {
   totalWords: number;
   wordsRead: number;
   durationSeconds: number;
-  wpm: number;
+  averageWPM: number;
+  peakWPM: number;
   targetWpm: number;
   chunkSize: number;
   comprehensionScore: number | null;
@@ -58,3 +59,26 @@ export interface BookStat {
   avgWpm: number;
   progressPercent: number;
 }
+
+// ── Phase 2: Personal Coach Types ──
+
+export interface ReadingProfile {
+  naturalWpm: number;
+  comfortableWpm: number;
+  trainingWpm: number;
+  challengeWpm: number;
+  peakWpm: number;
+  bestStableWpm: number;
+}
+
+export type SessionPhase = 'baseline' | 'warmup' | 'training' | 'challenge' | 'recovery' | 'checkpoint' | 'complete';
+
+export interface BaselineResult {
+  naturalWpm: number;
+  durationSeconds: number;
+  activeSeconds: number;
+  wordsRead: number;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export type ComprehensionRating = 1 | 2 | 3 | 4 | 5;

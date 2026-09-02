@@ -5,7 +5,7 @@
   "identifier": "com.zord.warraq",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:1422",
+    "devUrl": "http://127.0.0.1:1422",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },

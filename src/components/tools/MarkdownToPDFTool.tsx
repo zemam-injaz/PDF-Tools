@@ -61,7 +61,7 @@ export const MarkdownToPDFTool: React.FC = () => {
   const [pageSize, setPageSize] = useState('A4');
   const [fontFamily, setFontFamily] = useState('IBM Plex Sans Arabic');
   const [bodySize, setBodySize] = useState(12);
-  const [lineHeight, setLineHeight] = useState(2.8);
+  const [lineHeight, setLineHeight] = useState(2.0);
   const [direction, setDirection] = useState<'rtl' | 'ltr'>('rtl');
   const [marginTop, setMarginTop] = useState(20);
   const [marginBottom, setMarginBottom] = useState(25);
@@ -91,6 +91,20 @@ export const MarkdownToPDFTool: React.FC = () => {
 
   // Colors
   const [colors, setColors] = useState(DEFAULT_COLORS);
+
+  // Cover styling
+  const [coverBgType, setCoverBgType] = useState<'white' | 'solid' | 'gradient'>('gradient');
+  const [coverBgColor, setCoverBgColor] = useState('#0f172a');
+  const [coverGradientFrom, setCoverGradientFrom] = useState('#0f172a');
+  const [coverGradientTo, setCoverGradientTo] = useState('#1e40af');
+  const [coverAccentColor, setCoverAccentColor] = useState('#f5c518');
+  const [coverTextColor, setCoverTextColor] = useState('#ffffff');
+
+  const handleCoverBgTypeChange = (t: 'white' | 'solid' | 'gradient') => {
+    setCoverBgType(t);
+    if (t === 'white' && coverTextColor === '#ffffff') setCoverTextColor('#111827');
+    if (t !== 'white' && coverTextColor === '#111827') setCoverTextColor('#ffffff');
+  };
 
   const updateColor = (key: keyof typeof colors, value: string) => {
     setColors((prev) => ({ ...prev, [key]: value }));
@@ -137,6 +151,12 @@ export const MarkdownToPDFTool: React.FC = () => {
           publisher: publisher || undefined,
           include_toc: includeToc,
           cover_page: coverPage,
+          cover_bg_type: coverBgType,
+          cover_bg_color: coverBgColor,
+          cover_gradient_from: coverGradientFrom,
+          cover_gradient_to: coverGradientTo,
+          cover_accent_color: coverAccentColor,
+          cover_text_color: coverTextColor,
           chapter_breaks: chapterBreaks,
           bookmarks_enabled: bookmarksEnabled,
           // Header/Footer
@@ -395,6 +415,67 @@ export const MarkdownToPDFTool: React.FC = () => {
                     <span className="text-sm font-semibold text-primary">إنشاء إشارات للملفات</span>
                   </label>
                 </div>
+
+                {coverPage && (
+                  <div className="border border-border rounded-xl p-4 space-y-4 bg-white">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-primary">تخصيص الغلاف</h4>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-primary">نمط الخلفية</label>
+                        <select value={coverBgType} onChange={(e) => handleCoverBgTypeChange(e.target.value as 'white' | 'solid' | 'gradient')} className={inputBase}>
+                          <option value="white">أبيض</option>
+                          <option value="solid">لون واحد</option>
+                          <option value="gradient">تدرّج لوني</option>
+                        </select>
+                      </div>
+                      {coverBgType === 'solid' && (
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-primary">لون الخلفية</label>
+                          <div className="flex items-center gap-2">
+                            <input type="color" value={coverBgColor} onChange={(e) => setCoverBgColor(e.target.value)} className="w-10 h-10 rounded border border-border cursor-pointer" />
+                            <input type="text" value={coverBgColor} onChange={(e) => setCoverBgColor(e.target.value)} className={`${inputBase} flex-1 font-mono`} />
+                          </div>
+                        </div>
+                      )}
+                      {coverBgType === 'gradient' && (
+                        <>
+                          <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-primary">من لون</label>
+                            <div className="flex items-center gap-2">
+                              <input type="color" value={coverGradientFrom} onChange={(e) => setCoverGradientFrom(e.target.value)} className="w-10 h-10 rounded border border-border cursor-pointer" />
+                              <input type="text" value={coverGradientFrom} onChange={(e) => setCoverGradientFrom(e.target.value)} className={`${inputBase} flex-1 font-mono`} />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-primary">إلى لون</label>
+                            <div className="flex items-center gap-2">
+                              <input type="color" value={coverGradientTo} onChange={(e) => setCoverGradientTo(e.target.value)} className="w-10 h-10 rounded border border-border cursor-pointer" />
+                              <input type="text" value={coverGradientTo} onChange={(e) => setCoverGradientTo(e.target.value)} className={`${inputBase} flex-1 font-mono`} />
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-primary">لون الزخرفة (الشرائط والإطار)</label>
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={coverAccentColor} onChange={(e) => setCoverAccentColor(e.target.value)} className="w-10 h-10 rounded border border-border cursor-pointer" />
+                          <input type="text" value={coverAccentColor} onChange={(e) => setCoverAccentColor(e.target.value)} className={`${inputBase} flex-1 font-mono`} />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-primary">لون النص</label>
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={coverTextColor} onChange={(e) => setCoverTextColor(e.target.value)} className="w-10 h-10 rounded border border-border cursor-pointer" />
+                          <input type="text" value={coverTextColor} onChange={(e) => setCoverTextColor(e.target.value)} className={`${inputBase} flex-1 font-mono`} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 

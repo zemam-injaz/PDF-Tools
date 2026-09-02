@@ -1,5 +1,7 @@
 import os
+import gc
 import pytest
+import fitz
 from services.bookmark_service import BookmarkService, Bookmark
 
 def test_extract_bookmarks(temp_dir, create_dummy_pdf):
@@ -56,6 +58,63 @@ def test_parse_toc_text():
     assert bms[1].page == 2
     assert bms[2].title == "Chapter B"
     assert bms[2].page == 5
+
+def test_split_by_bookmarks_repairs_corrupt_xref(temp_dir):
+    """A PDF whose pages reference objects beyond the xref table must still split
+    (regression: 'code=4: source object number out of range' in insert_pdf)."""
+    src_path = os.path.join(temp_dir, "corrupt_source.pdf")
+    out_dir = os.path.join(temp_dir, "split_out")
+
+    # Minimal PDF with a page /Contents pointing at object 999 while the xref
+    # only covers objects 0-5 -> MuPDF raises "source object number out of range".
+    objs = {
+        1: b"<< /Type /Catalog /Pages 2 0 R /Outlines 4 0 R >>",
+        2: b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        3: b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << >> /Contents 999 0 R >>",
+        4: b"<< /Type /Outlines /First 5 0 R /Last 5 0 R /Count 1 >>",
+        5: b"<< /Title (Chapter 1) /Parent 4 0 R /Dest [3 0 R /Fit] >>",
+    }
+    parts = [b"%PDF-1.4\n"]
+    offsets = {}
+    for n in range(1, 6):
+        offsets[n] = sum(len(p) for p in parts)
+        parts.append(b"%d 0 obj\n" % n)
+        parts.append(objs[n])
+        parts.append(b"\nendobj\n")
+    xref_pos = sum(len(p) for p in parts)
+    parts.append(b"xref\n0 6\n")
+    parts.append(b"0000000000 65535 f \n")
+    for n in range(1, 6):
+        parts.append(b"%010d 00000 n \n" % offsets[n])
+    parts.append(b"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % xref_pos)
+    with open(src_path, "wb") as f:
+        f.write(b"".join(parts))
+
+    # Sanity: raw insert_pdf on this file reproduces the original error
+    raw = fitz.open(src_path)
+    nd = fitz.open()
+    try:
+        assert raw.get_toc() == [[1, "Chapter 1", 1]]
+        try:
+            nd.insert_pdf(raw)
+            raise AssertionError("expected insert_pdf to fail on corrupt xref")
+        except Exception as e:
+            assert "source object number out of range" in str(e)
+    finally:
+        nd.close()
+        raw.close()
+    # Release exception traceback cycle so the grafted docs are destroyed and
+    # the source file handle is freed on Windows before temp_dir teardown.
+    del raw, nd
+    gc.collect()
+
+    # Service must repair the source and split successfully
+    result = BookmarkService.split_by_bookmarks(src_path, out_dir, level_1_only=True)
+    assert result["total_files"] == 1
+    out_pdf = result["files_created"][0]
+    assert os.path.exists(out_pdf)
+    with fitz.open(out_pdf) as doc:
+        assert doc.page_count == 1
 
 def test_insert_bookmarks(temp_dir, create_dummy_pdf):
     pdf_path = os.path.join(temp_dir, "source.pdf")
