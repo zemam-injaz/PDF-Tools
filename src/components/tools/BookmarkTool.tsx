@@ -4,10 +4,12 @@ import {
   BookOpen, Copy, ChevronLeft, ChevronRight, Check, Plus,
   Scissors, FileText, Sparkles, ExternalLink,
   Edit3, Info, X, Search, Loader2,
-  ZoomIn, ZoomOut, Hash, Bookmark, LayoutGrid
+  ZoomIn, ZoomOut, Hash, Bookmark, LayoutGrid, Lock
 } from 'lucide-react';
 import { FileInput } from '../ui/FileInput';
 import { getDefaultOutputPath } from '../../lib/utils';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { PricingPage } from '../pricing/PricingPage';
 
 type Mode = 'extract' | 'split' | 'insert' | 'transfer';
 type InsertStep = 1 | 2 | 3 | 4;
@@ -92,6 +94,10 @@ const BookmarkThumbnailItem: React.FC<{
 };
 
 export const BookmarkTool: React.FC = () => {
+  const { checkAccess } = useSubscription();
+  const [showPricing, setShowPricing] = useState(false);
+  const canWriteBookmarks = checkAccess('bookmark_insert');
+
   const [inputPath, setInputPath] = useState('');
   const [outputPath, setOutputPath] = useState('');
   const [outputDir, setOutputDir] = useState('');
@@ -374,6 +380,7 @@ Rules:
 
   // Insert bookmarks into PDF
   const handleInsert = async () => {
+    if (!canWriteBookmarks) { setShowPricing(true); return; }
     if (!inputPath || !outputPath || parsedBookmarks.length === 0) return;
     
     const separator = outputPath.includes('\\') ? '\\' : '/';
@@ -398,6 +405,7 @@ Rules:
 
   // Transfer bookmarks
   const handleTransfer = async () => {
+    if (!canWriteBookmarks) { setShowPricing(true); return; }
     if (!sourcePath || !inputPath || !outputPath) return;
     
     const separator = outputPath.includes('\\') ? '\\' : '/';
@@ -439,8 +447,11 @@ Rules:
     { id: 'split' as Mode, label: 'تقسيم حسب الفهرس', icon: Scissors },
   ];
 
+  const isWriteMode = (id: Mode) => id === 'insert' || id === 'transfer';
+
   return (
     <div className="card h-full flex flex-col animate-fade-in relative z-0">
+      {showPricing && <PricingPage onClose={() => setShowPricing(false)} />}
       {/* Smart Mode Overlay */}
       {showSmartMode && (
         <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-slide-up">
@@ -565,10 +576,13 @@ Rules:
 
       {/* Mode Tabs */}
       <div className="flex gap-4 mb-10 overflow-x-auto pb-2">
-        {modes.map(m => (
+        {modes.map(m => {
+          const isLocked = isWriteMode(m.id) && !canWriteBookmarks;
+          return (
           <button
             key={m.id}
             onClick={() => { 
+              if (isLocked) { setShowPricing(true); return; }
               setMode(m.id); 
               setInsertStep(1); 
               setStatus({ type: '', message: '' }); 
@@ -580,12 +594,14 @@ Rules:
             className={`flex-1 py-4 px-6 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-3 border ${mode === m.id
                 ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm'
                 : 'bg-white border-border text-secondary hover:bg-gray-50'
-            }`}
+            } ${isLocked ? 'hover:bg-amber-50' : ''}`}
           >
             <m.icon size={20} />
             {m.label}
+            {isLocked && <Lock size={14} className="text-amber-500 shrink-0" />}
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* Status Notification */}

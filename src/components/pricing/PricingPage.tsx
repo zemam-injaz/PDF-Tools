@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, ExternalLink, XCircle, Key } from 'lucide-react';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { api } from '../../lib/api';
 
@@ -10,15 +10,15 @@ export const PricingPage = ({ onClose }: { onClose?: () => void }) => {
       name: 'شهري',
       price: '49 ج.م',
       period: '/ شهر',
-      features: ['جميع أدوات PDF', 'قراءة سريعة', 'مساحة تخزين سحابية', 'بدون إعلانات'],
+      features: ['جميع أدوات PDF', 'قراءة سريعة', 'بدون إعلانات'],
       recommended: false
     },
     {
-      id: 'yearly',
+      id: 'annual',
       name: 'سنوي',
       price: '299 ج.م',
       period: '/ سنة',
-      features: ['جميع أدوات PDF', 'قراءة سريعة', 'مساحة تخزين سحابية', 'بدون إعلانات', 'خصم 40%'],
+      features: ['جميع أدوات PDF', 'قراءة سريعة', 'بدون إعلانات', 'خصم 40%'],
       recommended: true
     },
     {
@@ -33,46 +33,58 @@ export const PricingPage = ({ onClose }: { onClose?: () => void }) => {
 
   const { userId, refreshSubscription } = useSubscription();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [activationPlan, setActivationPlan] = useState<string | null>(null);
+  const [licenseKey, setLicenseKey] = useState('');
+  const [licenseEmail, setLicenseEmail] = useState('');
+  const [activating, setActivating] = useState(false);
+  const [activationError, setActivationError] = useState('');
 
-  const handleSubscribe = async (planId: string, price: string) => {
+  const handleSubscribe = async (planId: string) => {
     if (!userId) return;
     setLoadingPlan(planId);
-    
-    // Parse amount (remove currency string)
-    // Assumes format like "49 ج.م"
-    const amount = parseFloat(price.replace(/[^0-9.]/g, ''));
-
+    setActivationError('');
     try {
-        const res = await api.payment.checkout(userId, planId, amount);
-        if (res.success && res.data) {
-            // Open payment URL
-            // In a real app we might redirect or open modal
-            // Here we check if it is our mock gateway
-            const url = res.data.data.payment_url;
-            
-            // Open in new window
-            const paymentWindow = window.open(url, '_blank', 'width=600,height=800');
-            
-            // Poll for closure? Or simple timeout?
-            // In a real integration, we'd listen for a success URL redirect.
-            // For now, let's just close the pricing modal and maybe show "Processing..."
-            if (paymentWindow) {
-                 const timer = setInterval(() => {
-                    if (paymentWindow.closed) {
-                        clearInterval(timer);
-                        refreshSubscription(); // Refresh to check if active
-                        if (onClose) onClose();
-                    }
-                 }, 1000);
-            }
-        } else {
-            alert('فشل في إنشاء رابط الدفع: ' + res.error);
-        }
+      const res = await api.payment.gumroad.start(userId, planId);
+      setLoadingPlan(null);
+      if (res.success && res.data) {
+        window.open(res.data.data.payment_url, '_blank', 'width=900,height=700');
+        setActivationPlan(planId);
+      } else {
+        alert('تعذر فتح صفحة الدفع: ' + res.error);
+      }
     } catch (e) {
-        console.error(e);
-        alert('حدث خطأ غير متوقع');
+      setLoadingPlan(null);
+      console.error(e);
+      alert('حدث خطأ غير متوقع');
+    }
+  };
+
+  const handleActivate = async () => {
+    if (!userId || !activationPlan || !licenseKey.trim()) return;
+    setActivating(true);
+    setActivationError('');
+    try {
+      const res = await api.payment.gumroad.activate(
+        userId,
+        licenseKey.trim(),
+        activationPlan,
+        licenseEmail.trim() || undefined,
+      );
+      if (res.success && res.data?.data?.activated) {
+        setActivationPlan(null);
+        setLicenseKey('');
+        setLicenseEmail('');
+        await refreshSubscription();
+        alert('تم تفعيل اشتراكك بنجاح 🎉');
+        if (onClose) onClose();
+      } else {
+        setActivationError(res.error || 'فشل التفعيل');
+      }
+    } catch (e) {
+      console.error(e);
+      setActivationError('حدث خطأ غير متوقع');
     } finally {
-        setLoadingPlan(null);
+      setActivating(false);
     }
   };
 
@@ -86,9 +98,70 @@ export const PricingPage = ({ onClose }: { onClose?: () => void }) => {
             </button>
           )}
           <h2 className="text-3xl font-bold text-gray-900 mb-4">اختر خطتك المناسبة</h2>
-          <p className="text-gray-500 max-w-2xl mx-auto mb-8">
-            استمتع بتجربة كاملة مع أدوات احترافية لتحسين سرعة القراءة وإدارة ملفات PDF.
+          <p className="text-gray-500 max-w-2xl mx-auto mb-2">
+            الدفع يتم عبر <span className="font-bold text-indigo-600">Gumroad</span> بأمان تام. بعد الشراء، أدخل رمز الترخيص (License Key) لتفعيل اشتراكك.
           </p>
+          <p className="text-xs text-gray-400 max-w-xl mx-auto mb-6">
+            💡 ملحوظة: يُحتسب الدفع بالدولار الأمريكي (USD) عند الدفع على منصة Gumroad بما يعادل الأسعار المعروضة.
+          </p>
+
+          {!activationPlan && (
+            <div className="mb-6">
+              <button
+                onClick={() => setActivationPlan('annual')}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 text-sm font-semibold rounded-xl hover:bg-indigo-100 transition-colors"
+              >
+                <Key size={16} />
+                لديك رمز ترخيص بالفعل؟ ادخله هنا لتفعيل الاشتراك
+              </button>
+            </div>
+          )}
+
+          {activationPlan && (
+            <div className="max-w-xl mx-auto mb-8 bg-gray-50 border border-indigo-100 rounded-2xl p-6 text-right animate-fade-in">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  <ExternalLink size={18} className="text-indigo-500" />
+                  تفعيل الاشتراك
+                </h3>
+                <button onClick={() => setActivationPlan(null)} className="text-gray-400 hover:text-gray-600" title="إلغاء">
+                  <XCircle size={18} />
+                </button>
+              </div>
+              <p className="text-sm text-gray-500 mb-4">
+                اكتمل الشراء؟ افتح رسالة Gumroad التي وصلت لبريدك، انسخ <span className="font-bold text-gray-700">License Key</span> وألصقه هنا.
+              </p>
+              <input
+                type="text"
+                value={licenseKey}
+                onChange={(e) => setLicenseKey(e.target.value)}
+                placeholder="License Key"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-mono text-sm mb-3"
+                dir="ltr"
+              />
+              <input
+                type="text"
+                value={licenseEmail}
+                onChange={(e) => setLicenseEmail(e.target.value)}
+                placeholder="بريد الشراء على Gumroad (اختياري)"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-sm mb-4"
+                dir="ltr"
+              />
+              {activationError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2 mb-4">
+                  {activationError}
+                </p>
+              )}
+              <button
+                onClick={handleActivate}
+                disabled={activating || !licenseKey.trim()}
+                className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {activating ? <Loader2 className="animate-spin" size={20} /> : null}
+                {activating ? 'جارٍ التحقق من الشراء...' : 'تفعيل الاشتراك'}
+              </button>
+            </div>
+          )}
 
           <div className="grid md:grid-cols-3 gap-6">
             {plans.map((plan) => (
@@ -121,14 +194,14 @@ export const PricingPage = ({ onClose }: { onClose?: () => void }) => {
                 </ul>
 
                 <button 
-                  onClick={() => handleSubscribe(plan.id, plan.price)}
-                  disabled={loadingPlan !== null}
+                  onClick={() => handleSubscribe(plan.id)}
+                  disabled={loadingPlan !== null || activationPlan !== null}
                   className={`w-full py-3 px-4 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 ${
                   plan.recommended
                     ? 'bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-indigo-400'
                     : 'bg-gray-100 text-gray-900 hover:bg-gray-200 disabled:bg-gray-50'
                 }`}>
-                  {loadingPlan === plan.id ? <Loader2 className="animate-spin" size={20} /> : 'اشترك الآن'}
+                  {loadingPlan === plan.id ? <Loader2 className="animate-spin" size={20} /> : 'اشترِ عبر Gumroad'}
                 </button>
               </div>
             ))}

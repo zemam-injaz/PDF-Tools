@@ -42,6 +42,7 @@ python-server/credentials.json
 .env
 *.env.local
 .credentials/
+python-server/.entitlement_ed25519.key
 
 null
 .null

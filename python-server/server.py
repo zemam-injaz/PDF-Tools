@@ -7,6 +7,40 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
+
+def _load_env_file():
+    """Load key-value pairs from .env into os.environ if not already set."""
+    candidates = [
+        os.path.join(os.path.dirname(__file__), ".env"),
+        os.path.join(os.path.dirname(__file__), "..", ".env"),
+        ".env"
+    ]
+    for env_path in candidates:
+        if os.path.isfile(env_path):
+            try:
+                with open(env_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            k, v = k.strip(), v.strip().strip("'\"")
+                            if k and k not in os.environ:
+                                os.environ[k] = v
+            except Exception:
+                pass
+
+_load_env_file()
+
+
+
+def _cors_origins() -> List[str]:
+    """CORS origins from CORS_ALLOW_ORIGINS (comma separated). Default '*' for
+    local development only; production must set explicit origins (see .env.example)."""
+    raw = os.environ.get("CORS_ALLOW_ORIGINS", "*").strip()
+    if raw == "*":
+        return ["*"]
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
 # Import services
 from services import (
     PDFService, TextService, BookmarkService, 
@@ -16,6 +50,7 @@ from services import (
 )
 from api.subscription_routes import router as subscription_router
 from api.payment_routes import router as payment_router
+from api.gumroad_routes import router as gumroad_router
 from api.tahweel_routes import router as tahweel_router
 from api.task_routes import router as task_router
 
@@ -25,12 +60,13 @@ app = FastAPI(title="PDF Tools API", version="0.2.0")
 
 app.include_router(subscription_router)
 app.include_router(payment_router)
+app.include_router(gumroad_router)
 app.include_router(tahweel_router)
 app.include_router(task_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -15,18 +15,16 @@ describe('TimingEngine', () => {
       }
     });
 
-    it('produces longer dwell for longer words', () => {
-      const engine = new TimingEngine({ targetWpm: 300, warmUpDurationSec: 0, warmUpWpm: 300 });
+    it('bases dwell on word count, not word length', () => {
+      const engine = new TimingEngine({ targetWpm: 300, warmUpDurationSec: 0 });
       const tokens = tokenize('a tiny lengthyWord');
       const timed = engine.compute(tokens, 300);
 
-      const shortDwell = timed[1].dwellMs; // "tiny" (4 chars)
-      const longDwell = timed[2].dwellMs;  // "lengthyWord" (11 chars)
-      expect(longDwell).toBeGreaterThan(shortDwell);
+      expect(timed[1].dwellMs).toBe(timed[2].dwellMs);
     });
 
     it('produces longer dwell for punctuation', () => {
-      const engine = new TimingEngine({ targetWpm: 300, warmUpDurationSec: 0, warmUpWpm: 300 });
+      const engine = new TimingEngine({ targetWpm: 300, warmUpDurationSec: 0 });
       const tokens = tokenize('word , word');
       const timed = engine.compute(tokens, 300);
 
@@ -35,17 +33,17 @@ describe('TimingEngine', () => {
     });
 
     it('produces longer dwell for paragraph end', () => {
-      const engine = new TimingEngine({ targetWpm: 300, warmUpDurationSec: 0, warmUpWpm: 300 });
+      const engine = new TimingEngine({ targetWpm: 300, warmUpDurationSec: 0 });
       const tokens = tokenize('First paragraph\n\nSecond');
       const timed = engine.compute(tokens, 300);
 
       const endToken = timed.find(t => t.isParagraphEnd);
       expect(endToken).toBeDefined();
-      expect(endToken!.dwellMs).toBeGreaterThan(timed[0].dwellMs * 2);
+      expect(endToken!.dwellMs).toBeGreaterThan(timed[0].dwellMs);
     });
 
     it('produces longer dwell for headings', () => {
-      const engine = new TimingEngine({ targetWpm: 300, warmUpDurationSec: 0, warmUpWpm: 300 });
+      const engine = new TimingEngine({ targetWpm: 300, warmUpDurationSec: 0 });
       const tokens = tokenize('# Heading\nbody');
       const timed = engine.compute(tokens, 300);
 
@@ -53,13 +51,13 @@ describe('TimingEngine', () => {
       const bodyToken = timed.find(t => !t.isHeading);
       expect(headingToken).toBeDefined();
       expect(bodyToken).toBeDefined();
-      expect(headingToken!.dwellMs).toBeGreaterThan(bodyToken!.dwellMs * 2);
+      expect(headingToken!.dwellMs).toBeGreaterThan(bodyToken!.dwellMs);
     });
   });
 
   describe('warm-up ramp', () => {
     it('starts at warm-up WPM', () => {
-      const engine = new TimingEngine({ targetWpm: 600, warmUpWpm: 200, warmUpDurationSec: 90 });
+      const engine = new TimingEngine({ targetWpm: 600, warmUpRatio: 0.5, warmUpDurationSec: 90 });
       const tokens = tokenize('test');
 
       const early = engine.compute(tokens, 0);
@@ -69,7 +67,7 @@ describe('TimingEngine', () => {
     });
 
     it('reaches target WPM after warm-up period', () => {
-      const engine = new TimingEngine({ targetWpm: 300, warmUpWpm: 150, warmUpDurationSec: 60 });
+      const engine = new TimingEngine({ targetWpm: 300, warmUpRatio: 0.5, warmUpDurationSec: 60 });
       const tokens = tokenize('test');
 
       const afterWarmUp = engine.compute(tokens, 120);
@@ -81,18 +79,18 @@ describe('TimingEngine', () => {
   });
 
   describe('getEffectiveWpm', () => {
-    it('returns warmUpWpm at start', () => {
-      const engine = new TimingEngine({ targetWpm: 400, warmUpWpm: 200, warmUpDurationSec: 60 });
+    it('returns warm-up WPM at start', () => {
+      const engine = new TimingEngine({ targetWpm: 400, warmUpRatio: 0.5, warmUpDurationSec: 60 });
       expect(engine.getEffectiveWpm(0)).toBe(200);
     });
 
     it('returns targetWpm after warm-up', () => {
-      const engine = new TimingEngine({ targetWpm: 400, warmUpWpm: 200, warmUpDurationSec: 60 });
+      const engine = new TimingEngine({ targetWpm: 400, warmUpRatio: 0.5, warmUpDurationSec: 60 });
       expect(engine.getEffectiveWpm(120)).toBe(400);
     });
 
     it('interpolates during warm-up', () => {
-      const engine = new TimingEngine({ targetWpm: 400, warmUpWpm: 200, warmUpDurationSec: 60 });
+      const engine = new TimingEngine({ targetWpm: 400, warmUpRatio: 0.5, warmUpDurationSec: 60 });
       const mid = engine.getEffectiveWpm(30);
       expect(mid).toBeGreaterThan(200);
       expect(mid).toBeLessThan(400);
@@ -115,11 +113,11 @@ describe('TimingEngine', () => {
     it('accepts partial config', () => {
       const engine = new TimingEngine({ targetWpm: 500 });
       expect(engine.getConfig().targetWpm).toBe(500);
-      expect(engine.getConfig().longWordMultiplier).toBe(1.3); // default
+      expect(engine.getConfig().punctuationMultiplier).toBe(1.05); // default
     });
 
     it('overrides targetWpm and chunkSize at compute time', () => {
-      const engine = new TimingEngine({ targetWpm: 300, warmUpDurationSec: 0, warmUpWpm: 300 });
+      const engine = new TimingEngine({ targetWpm: 300, warmUpDurationSec: 0 });
       const tokens = tokenize('a b c d');
       const timed = engine.compute(tokens, 300, { targetWpm: 600, chunkSize: 2 });
       const chunks = engine.getChunks(timed);
@@ -138,7 +136,7 @@ describe('TimingEngine', () => {
     });
 
     it('handles single token', () => {
-      const engine = new TimingEngine({ warmUpDurationSec: 0, warmUpWpm: 300, targetWpm: 300 });
+      const engine = new TimingEngine({ warmUpDurationSec: 0, targetWpm: 300 });
       const tokens = tokenize('hello');
       const timed = engine.compute(tokens, 300);
       expect(timed).toHaveLength(1);

@@ -2,6 +2,12 @@
 let BASE_URL = 'http://127.0.0.1:8002'; // Default fallback
 let portInitialized = false;
 
+// Remote base for subscription/payment/entitlement — configured at build time
+// via VITE_REMOTE_API_BASE_URL. Never falls back to localhost (see remoteRequest).
+const REMOTE_BASE_URL = (import.meta.env.VITE_REMOTE_API_BASE_URL || '')
+  .trim()
+  .replace(/\/+$/, '');
+
 // Initialize the API with the correct port from Tauri
 async function initializeBackendPort(): Promise<void> {
   if (portInitialized) return;
@@ -31,12 +37,21 @@ async function initializeBackendPort(): Promise<void> {
 initializeBackendPort();
 
 /**
- * Get the current API base URL. Ensures port is initialized.
+ * Get the current API base URL (local PDF/python server). Ensures port is initialized.
  * Use this in components that make direct fetch calls.
  */
 export async function getApiBaseUrl(): Promise<string> {
   await initializeBackendPort();
   return BASE_URL;
+}
+
+/**
+ * Get the configured REMOTE API base URL (subscription/payment/entitlement).
+ * Returns an empty string when VITE_REMOTE_API_BASE_URL is not configured —
+ * remote calls are then rejected by remoteRequest (never routed to localhost).
+ */
+export function getRemoteApiBaseUrl(): string {
+  return REMOTE_BASE_URL;
 }
 
 interface ApiResult<T> {
@@ -94,6 +109,62 @@ async function request<T>(endpoint: string, method: 'GET' | 'POST' = 'GET', body
       };
     }
 
+    return { success: false, error: message };
+  }
+}
+
+// Remote request for subscription/payment/entitlement. Uses REMOTE_API_BASE_URL
+// only — it refuses to run when the remote base is not configured and never
+// falls back to the local PDF backend (localhost).
+async function remoteRequest<T>(endpoint: string, method: 'GET' | 'POST' = 'GET', body?: unknown, headers: Record<string, string> = {}): Promise<ApiResult<T>> {
+  if (!REMOTE_BASE_URL) {
+    const message = 'Remote API (VITE_REMOTE_API_BASE_URL) is not configured';
+    console.error(`[Remote API] ${message} — refusing ${method} ${endpoint}`);
+    return { success: false, error: message };
+  }
+  const url = `${REMOTE_BASE_URL}${endpoint}`;
+  console.log(`[Remote API Request] ${method} ${url}`, body);
+
+  try {
+    const options: RequestInit = {
+      method,
+      headers: { 'Content-Type': 'application/json', ...headers },
+    };
+    if (body) options.body = JSON.stringify(body);
+
+    const response = await fetch(url, options);
+    console.log(`[Remote API Response] ${response.status} ${response.statusText}`);
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`[Remote API Error Body]`, text);
+
+      let errorMessage = text;
+      try {
+        const jsonError = JSON.parse(text);
+        if (jsonError.detail) {
+          errorMessage = jsonError.detail;
+        } else if (jsonError.error) {
+          errorMessage = jsonError.error;
+        }
+      } catch (e) {
+        // Not JSON, use plain text
+      }
+
+      return { success: false, error: errorMessage };
+    }
+    const data = await response.json();
+    console.log(`[Remote API Data]`, data);
+    return { success: true, data };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown error occurred';
+    console.error(`[Remote API Exception]`, e);
+    if (message === 'Failed to fetch') {
+      return {
+        success: false,
+        error: 'تعذر الاتصال بخادم الاشتراكات. تأكد من اتصالك بالإنترنت. (Failed to fetch)'
+      };
+    }
     return { success: false, error: message };
   }
 }
@@ -201,16 +272,23 @@ export const api = {
   openUrl: (url: string) =>
     request<{ status: string }>('/api/system/open-url', 'POST', { file_path: url }),
 
-  // Subscription
+  // Subscription (remote)
   subscription: {
     authDevice: (deviceId: string) =>
-      request<{ status: string; data: { user: any; subscription: any } }>('/api/subscription/auth/device', 'POST', { device_id: deviceId }),
+      remoteRequest<{ status: string; data: { user: any; subscription: any } }>('/api/subscription/auth/device', 'POST', { device_id: deviceId }),
     getStatus: (deviceId: string) =>
-      request<{ status: string; data: any }>('/api/subscription/status', 'GET', undefined, { 'X-Device-ID': deviceId }),
+      remoteRequest<{ status: string; data: any }>('/api/subscription/status', 'GET', undefined, { 'X-Device-ID': deviceId }),
+    verify: (deviceId: string) =>
+      remoteRequest<{ status: string; data: any }>('/api/subscription/verify', 'POST', undefined, { 'X-Device-ID': deviceId }),
   },
+  // Payment (remote) — Gumroad license flow
   payment: {
-    checkout: (userId: string, planId: string, amount: number, currency: string = "EGP") =>
-      request<{ status: string; data: { payment_url: string } }>('/api/payment/checkout', 'POST', { user_id: userId, plan_id: planId, amount, currency }),
+    gumroad: {
+      start: (userId: string, planId: string) =>
+        remoteRequest<{ status: string; data: { plan_id: string; product_permalink: string; payment_url: string } }>('/api/payment/gumroad/start', 'POST', { user_id: userId, plan_id: planId }),
+      activate: (userId: string, licenseKey: string, planId?: string, email?: string) =>
+        remoteRequest<{ status: string; data: { activated: boolean; plan_id: string; sale_id: string } }>('/api/payment/gumroad/activate', 'POST', { user_id: userId, license_key: licenseKey, plan_id: planId, email }),
+    },
   },
   // Tahweel (Google OCR)
   tahweel: {

@@ -11,13 +11,15 @@ import { UpgradeButton } from '../pricing/UpgradeButton';
 import { tokenize, buildChunks, getOrpIndex, type Language } from '../../lib/reader/Tokenizer';
 import { chunkDwellMs, effectiveWPM, chunkSizeFromWPM, WARM_UP_SECONDS } from '../../lib/reader/TimingEngine';
 import { SessionTracker, generateReadingPlan } from '../../lib/reader/SessionTracker';
-import type { Token, SessionReport, TimedToken } from '../../lib/reader/types';
+import type { Token, SessionReport } from '../../lib/reader/types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type FileMode = 'md' | 'pdf';
 type SessionState = 'idle' | 'reading' | 'paused' | 'done';
 type ReaderMode = 'normal' | 'rsvp' | 'focus';
+
+const FREE_MAX_WPM = 250;
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60);
@@ -308,6 +310,9 @@ export function ReadingSpeedTool() {
   const { checkAccess } = useSubscription();
   const [showPricing, setShowPricing] = useState(false);
   const hasAccess = checkAccess('fast_reading');
+  const isUnlimited = hasAccess;
+  const maxWpm = isUnlimited ? 1000 : FREE_MAX_WPM;
+  const clampWpm = (v: number) => Math.max(50, Math.min(maxWpm, Math.round(v)));
   const [activeTab, setActiveTab] = useState<'session' | 'plan'>('session');
 
   // ── File State ──────────────────────────────────────────────────────────────
@@ -558,9 +563,9 @@ export function ReadingSpeedTool() {
     setLastSession(report);
     setSessions(prev => [report, ...prev.slice(0, 9)]);
     setSessionState('done');
-    if (report.averageWPM > 0) setTargetWPM(report.averageWPM);
+    if (report.averageWPM > 0) setTargetWPM(clampWpm(report.averageWPM));
     localStorage.setItem('fast_reading_last_wpm', String(report.averageWPM));
-  }, [fileName, totalWords]);
+  }, [fileName, totalWords, isUnlimited]);
 
   // ── RSVP Scheduler ────────────────────────────────────────────────────────
   // We pass the *session-start timestamp* (ms) so each call computes
@@ -588,7 +593,7 @@ export function ReadingSpeedTool() {
 
   const handleSpeedChange = useCallback((delta: number) => {
     setTargetWPM(v => {
-      const newWpm = Math.max(50, Math.min(1000, v + delta));
+      const newWpm = clampWpm(v + delta);
       if (sessionState === 'reading' && rsvpTimerRef.current) {
         clearTimeout(rsvpTimerRef.current);
         // Resume from current chunk with new WPM; pass the same virtual start timestamp
@@ -596,7 +601,7 @@ export function ReadingSpeedTool() {
       }
       return newWpm;
     });
-  }, [sessionState, scheduleNextChunk]);
+  }, [sessionState, scheduleNextChunk, isUnlimited]);
 
   // ── Keyboard Shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -711,22 +716,10 @@ export function ReadingSpeedTool() {
   const nextChunk = currentChunks[chunkIndex + 1] || [];
   const progressPct = currentChunks.length > 0 ? (chunkIndex / currentChunks.length) * 100 : 0;
 
-  // ── Access Gate ───────────────────────────────────────────────────────────────
-  if (!hasAccess) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center p-8 text-center">
-        {showPricing && <PricingPage onClose={() => setShowPricing(false)} />}
-        <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full border border-gray-100">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Lock className="text-red-500" size={32} />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">خاصية مدفوعة</h2>
-          <p className="text-gray-500 mb-8">القراءة السريعة الذكية متاحة في النسخة الكاملة.</p>
-          <UpgradeButton onClick={() => setShowPricing(true)} className="w-full justify-center" />
-        </div>
-      </div>
-    );
-  }
+  // ── Speed cap enforcement (free tier) ────────────────────────────────────────
+  useEffect(() => {
+    if (!isUnlimited && targetWPM > FREE_MAX_WPM) setTargetWPM(FREE_MAX_WPM);
+  }, [isUnlimited, targetWPM]);
 
   // ── Immersive Overlay ─────────────────────────────────────────────────────────
   //
@@ -844,7 +837,7 @@ export function ReadingSpeedTool() {
             ? <><Pause size={18} fill="currentColor" /> إيقاف مؤقت</>
             : <><Play  size={18} fill="currentColor" /> استئناف</>}
         </button>
-        <button onClick={handleFinish} className="px-6 py-3 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-all flex items-center gap-2">
+        <button onClick={() => handleFinish()} className="px-6 py-3 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-all flex items-center gap-2">
           <CheckCircle size={18} /> انتهيت
         </button>
         <button onClick={handleStop} className="p-3 rounded-2xl text-slate-400 bg-white/5 hover:bg-white/10 transition-all">
@@ -924,6 +917,7 @@ export function ReadingSpeedTool() {
 
   return (
     <>
+      {showPricing && <PricingPage onClose={() => setShowPricing(false)} />}
       {immersiveOverlay}
       <div className="max-w-4xl mx-auto w-full pb-12" dir="rtl">
 
@@ -947,7 +941,7 @@ export function ReadingSpeedTool() {
               onClick={() => setActiveTab('plan')}
               className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'plan' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              <CalendarIcon size={15} /> خطة القراءة
+              <CalendarIcon size={15} /> خطة القراءة {!isUnlimited && <Lock size={11} className="text-amber-500" />}
             </button>
           </div>
         </div>
@@ -955,6 +949,16 @@ export function ReadingSpeedTool() {
         {/* ── SESSION TAB ── */}
         {activeTab === 'session' ? (
           <>
+            {!isUnlimited && (
+              <div className="mb-6 flex items-center justify-between gap-4 bg-gradient-to-l from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl px-5 py-3">
+                <div className="flex items-center gap-3 text-sm text-indigo-800">
+                  <Lock size={16} className="text-indigo-500 shrink-0" />
+                  <span className="font-semibold">القراءة مجانية حتى {FREE_MAX_WPM} كلمة/د — ارفع السرعة وافتح التحليلات في النسخة الكاملة.</span>
+                </div>
+                <UpgradeButton onClick={() => setShowPricing(true)} className="shrink-0 px-4 py-1.5 text-xs" label="ترقية" />
+              </div>
+            )}
+
             {/* File mode toggle */}
             <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-2xl w-fit">
               {(['md', 'pdf'] as FileMode[]).map(m => (
@@ -1099,11 +1103,22 @@ export function ReadingSpeedTool() {
                     <div className="flex items-center gap-2 mr-auto">
                       <span className="text-xs font-bold text-gray-500">سرعة الانطلاق:</span>
                       <div className="flex gap-1.5">
-                        {[150, 250, 350, 500, 700].map(v => (
-                          <button key={v} onClick={() => setTargetWPM(v)} className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all ${targetWPM === v ? 'bg-indigo-600 text-white' : 'bg-white text-gray-400 border border-gray-200 hover:border-indigo-300'}`}>
-                            {v}
-                          </button>
-                        ))}
+                        {[150, 250, 350, 500, 700].map(v => {
+                          const locked = !isUnlimited && v > FREE_MAX_WPM;
+                          return (
+                            <button
+                              key={v}
+                              onClick={() => {
+                                if (locked) { setShowPricing(true); return; }
+                                setTargetWPM(v);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all ${targetWPM === v ? 'bg-indigo-600 text-white' : locked ? 'bg-amber-50 text-amber-500 border border-amber-200 hover:border-amber-400' : 'bg-white text-gray-400 border border-gray-200 hover:border-indigo-300'}`}
+                              title={locked ? 'متاح في النسخة الكاملة' : undefined}
+                            >
+                              {v}{locked && <Lock size={9} className="inline ml-1" />}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -1190,7 +1205,7 @@ export function ReadingSpeedTool() {
                     >
                       {sessionState === 'reading' ? <><Pause size={22} fill="currentColor" /> إيقاف مؤقت</> : <><Play size={22} fill="currentColor" /> استئناف</>}
                     </button>
-                    <button onClick={handleFinish} className="flex items-center gap-3 px-10 py-4 bg-emerald-600 text-white rounded-2xl font-black text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100">
+                    <button onClick={() => handleFinish()} className="flex items-center gap-3 px-10 py-4 bg-emerald-600 text-white rounded-2xl font-black text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100">
                       <CheckCircle size={22} /> انتهيت
                     </button>
                     {readerMode === 'rsvp' && (
@@ -1256,8 +1271,21 @@ export function ReadingSpeedTool() {
               </div>
             )}
 
+            {!isUnlimited && sessions.length > 0 && (
+              <div className="card mb-6 flex flex-col items-center justify-center gap-4 p-8 text-center">
+                <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center">
+                  <Lock className="text-amber-500" size={26} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-800 mb-1">سجل التقدم والرسوم البيانية</h3>
+                  <p className="text-sm text-gray-500">حلل تطور سرعة قراءتك عبر الجلسات مع الرسوم البيانية والإحصائيات الكاملة.</p>
+                </div>
+                <UpgradeButton onClick={() => setShowPricing(true)} />
+              </div>
+            )}
+
             {/* Session history chart */}
-            {sessions.length >= 2 && (
+            {isUnlimited && sessions.length >= 2 && (
               <div className="card mb-6 overflow-hidden">
                 <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
                   <BarChart3 size={18} className="text-indigo-500" /> تطور سرعة القراءة
@@ -1296,7 +1324,7 @@ export function ReadingSpeedTool() {
             )}
 
             {/* Session list */}
-            {sessions.length > 0 && (
+            {isUnlimited && sessions.length > 0 && (
               <div className="card">
                 <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <BookOpen size={18} className="text-indigo-500" /> سجل الجلسات
@@ -1320,7 +1348,7 @@ export function ReadingSpeedTool() {
               </div>
             )}
           </>
-        ) : (
+        ) : isUnlimited ? (
           /* ── PLAN TAB ── */
           <div className="space-y-6 animate-fade-in">
             {/* Book indexing card */}
@@ -1528,6 +1556,19 @@ export function ReadingSpeedTool() {
                 )}
               </div>
             )}
+          </div>
+        ) : (
+          <div className="max-w-xl mx-auto py-10">
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-10 text-center">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Lock className="text-amber-500" size={30} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">خطة القراءة الذكية</h3>
+              <p className="text-gray-500 text-sm mb-8 leading-relaxed">
+                أنشئ خطة قراءة مخصصة مع تكرار متباعد وجدولة يومية مبنية على سرعتك الفعلية.
+              </p>
+              <UpgradeButton onClick={() => setShowPricing(true)} className="mx-auto" />
+            </div>
           </div>
         )}
       </div>

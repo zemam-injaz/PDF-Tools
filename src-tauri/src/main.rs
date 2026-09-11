@@ -59,6 +59,25 @@ fn open_in_explorer(path: String) {
     }
 }
 
+#[tauri::command]
+fn read_app_file(app: tauri::AppHandle, name: String) -> Result<Option<String>, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join(name);
+    match std::fs::read_to_string(&path) {
+        Ok(content) => Ok(Some(content)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+fn write_app_file(app: tauri::AppHandle, name: String, content: String) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    std::fs::write(dir.join(name), content).map_err(|e| e.to_string())
+}
+
 fn find_server_executable(resource_dir: &PathBuf) -> Option<PathBuf> {
     let candidates = vec![
         // Production structure - likely flattens or keeps resources folder
@@ -114,7 +133,7 @@ fn main() {
     println!("Selected backend port: {}", port);
     
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![open_in_explorer, get_backend_port])
+        .invoke_handler(tauri::generate_handler![open_in_explorer, get_backend_port, read_app_file, write_app_file])
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())

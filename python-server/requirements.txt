@@ -14,3 +14,4 @@ openpyxl
 markdown-it-py
 mdit-py-plugins
 playwright
+cryptography

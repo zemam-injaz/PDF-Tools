@@ -11,24 +11,38 @@ router = APIRouter(prefix="/api/payment", tags=["Payment"])
 class CheckoutRequest(BaseModel):
     user_id: str
     plan_id: str
-    amount: float
     currency: str = "EGP"
 
 @router.post("/checkout")
 def create_checkout(request: CheckoutRequest):
-    """Create a payment link"""
+    """Create a payment link.
+
+    The server derives the amount from plan_id (see payment_service.PLAN_PRICING);
+    the client never supplies a price.
+    """
     try:
         result = payment_service.create_checkout_session(
-            request.user_id, request.plan_id, request.amount, request.currency
+            request.user_id, request.plan_id, request.currency
         )
         return {"status": "success", "data": result}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/webhook")
 async def payment_webhook(request: Request, background_tasks: BackgroundTasks):
-    """Handle webhook from payment gateway with HMAC-SHA512 signature validation."""
+    """Handle webhook from payment gateway with HMAC-SHA512 signature validation.
+
+    FAIL CLOSED: in production (ENVIRONMENT=production), a missing PAYMOB_HMAC_SECRET
+    rejects every webhook. There is no mock/bypass path in production.
+    """
+    environment = os.environ.get("ENVIRONMENT", "").strip().lower()
     hmac_secret = os.environ.get("PAYMOB_HMAC_SECRET", "")
+
+    if not hmac_secret and environment == "production":
+        print("[WEBHOOK] PRODUCTION + missing PAYMOB_HMAC_SECRET — rejecting webhook (fail closed).", flush=True)
+        raise HTTPException(status_code=403, detail="Webhook rejected: PAYMOB_HMAC_SECRET not configured")
 
     if hmac_secret:
         # PayMob sends HMAC-SHA512 hash in the HTTP_HMAC header
@@ -51,8 +65,8 @@ async def payment_webhook(request: Request, background_tasks: BackgroundTasks):
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid JSON body")
     else:
-        # No secret configured — dev/mock mode, skip validation but warn
-        print("[WEBHOOK] WARNING: PAYMOB_HMAC_SECRET not set. Skipping signature check (mock mode).", flush=True)
+        # No secret configured and NOT production — dev/mock mode only.
+        print("[WEBHOOK] WARNING: PAYMOB_HMAC_SECRET not set (non-production). Skipping signature check (mock mode).", flush=True)
         try:
             data = await request.json()
         except Exception as e:
@@ -68,12 +82,17 @@ async def payment_webhook(request: Request, background_tasks: BackgroundTasks):
         return {"status": "error", "detail": str(e)}
 
 
-# Mock Gateway Endpoint
+# Mock Gateway Endpoint — development/test only. Never reachable in production.
 @router.get("/mock-gateway", response_class=HTMLResponse)
 def mock_gateway(user_id: str, plan_id: str):
     """
     Simulates a payment page.
+
+    In production this route returns 404: the mock gateway can never fulfill a
+    subscription. (The real PayMob webhook is additionally HMAC-protected.)
     """
+    if os.environ.get("ENVIRONMENT", "").strip().lower() == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     html_content = f"""
     <html>
         <head>
@@ -94,12 +113,17 @@ def mock_gateway(user_id: str, plan_id: str):
             </div>
             <script>
                 function confirmPayment() {{
-                    // Call webhook locally
+                    // Call webhook locally (unique event_id + transaction_id for idempotency)
+                    var evtId = 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+                    var txnId = 'txn_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
                     fetch('/api/payment/webhook', {{
                         method: 'POST',
                         headers: {{ 'Content-Type': 'application/json' }},
                         body: JSON.stringify({{
                             success: true,
+                            obj: {{ id: txnId }},
+                            event_id: evtId,
+                            transaction_id: txnId,
                             order_id: 'mock_order_' + Date.now(),
                             user_id: '{user_id}',
                             plan_id: '{plan_id}'

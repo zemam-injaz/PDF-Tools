@@ -63,7 +63,7 @@ describe('SessionTracker', () => {
   describe('event recording', () => {
     it('records display events', () => {
       tracker.start();
-      const engine = new TimingEngine({ warmUpDurationSec: 0, warmUpWpm: 300, targetWpm: 300 });
+      const engine = new TimingEngine({ warmUpDurationSec: 0, targetWpm: 300 });
       const tokens = tokenize('hello world');
       const timed = engine.compute(tokens, 300);
 
@@ -116,7 +116,7 @@ describe('SessionTracker', () => {
 
     it('computes consistency from fixation intervals', () => {
       tracker.start();
-      const engine = new TimingEngine({ warmUpDurationSec: 0, warmUpWpm: 300, targetWpm: 300 });
+      const engine = new TimingEngine({ warmUpDurationSec: 0, targetWpm: 300 });
       const tokens = tokenize('a b c d e');
       const timed = engine.compute(tokens, 300);
 

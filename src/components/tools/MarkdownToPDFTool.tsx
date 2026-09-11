@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { getApiBaseUrl } from '../../lib/api';
-import { FolderOpen, FileText, ArrowRight, CheckCircle, AlertCircle, X, FileImage, Settings, BookOpen, PanelTop, Palette } from 'lucide-react';
+import { FolderOpen, FileText, ArrowRight, CheckCircle, AlertCircle, X, FileImage, Settings, BookOpen, PanelTop, Palette, Lock } from 'lucide-react';
 import { FileInput, MultiFileInput } from '../ui/FileInput';
 import { openPath } from '../../lib/utils';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { PricingPage } from '../pricing/PricingPage';
+import { UpgradeButton } from '../pricing/UpgradeButton';
 
 const PAGE_SIZES = [
   { value: 'A4', label: 'A4' },
@@ -50,6 +53,15 @@ const DEFAULT_COLORS = {
 };
 
 export const MarkdownToPDFTool: React.FC = () => {
+  const { checkAccess } = useSubscription();
+  const [showPricing, setShowPricing] = useState(false);
+  const hasAdvanced = checkAccess('md_to_pdf_advanced');
+  const advancedEnabled = (v: boolean) => hasAdvanced && v;
+  const gateToggle = (setter: (v: boolean) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!hasAdvanced) { setShowPricing(true); return; }
+    setter(e.target.checked);
+  };
+
   const [files, setFiles] = useState<string[]>([]);
   const [outputPath, setOutputPath] = useState('');
   const [loading, setLoading] = useState(false);
@@ -149,8 +161,8 @@ export const MarkdownToPDFTool: React.FC = () => {
           subject: subject || undefined,
           keywords: keywords || undefined,
           publisher: publisher || undefined,
-          include_toc: includeToc,
-          cover_page: coverPage,
+          include_toc: advancedEnabled(includeToc),
+          cover_page: advancedEnabled(coverPage),
           cover_bg_type: coverBgType,
           cover_bg_color: coverBgColor,
           cover_gradient_from: coverGradientFrom,
@@ -158,12 +170,12 @@ export const MarkdownToPDFTool: React.FC = () => {
           cover_accent_color: coverAccentColor,
           cover_text_color: coverTextColor,
           chapter_breaks: chapterBreaks,
-          bookmarks_enabled: bookmarksEnabled,
+          bookmarks_enabled: advancedEnabled(bookmarksEnabled),
           // Header/Footer
-          header_enabled: headerEnabled,
+          header_enabled: advancedEnabled(headerEnabled),
           header_text: headerText || undefined,
           header_align: headerAlign,
-          footer_enabled: footerEnabled,
+          footer_enabled: advancedEnabled(footerEnabled),
           footer_text: footerText || undefined,
           footer_align: footerAlign,
           footer_page_numbers: footerPageNumbers,
@@ -217,6 +229,7 @@ export const MarkdownToPDFTool: React.FC = () => {
 
   return (
     <div className="card h-full flex flex-col animate-fade-in">
+      {showPricing && <PricingPage onClose={() => setShowPricing(false)} />}
       <div className="flex items-center gap-4 mb-6 pb-6 border-b border-border">
         <div className="p-4 rounded-xl bg-amber-50 text-amber-600 shadow-sm">
           <FileText size={28} />
@@ -226,6 +239,16 @@ export const MarkdownToPDFTool: React.FC = () => {
           <p className="text-secondary mt-1">تحويل ملفات Markdown إلى PDF احترافي مع تنسيق كامل.</p>
         </div>
       </div>
+
+      {!hasAdvanced && (
+        <div className="mb-6 flex items-center justify-between gap-4 bg-gradient-to-l from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-5 py-4">
+          <div className="flex items-center gap-3 text-sm text-amber-800">
+            <Lock size={18} className="text-amber-500 shrink-0" />
+            <span className="font-semibold">التحويل الأساسي مجاني. غلاف، فهرس، إشارات، وترويسة/تذييل متوفرة في النسخة الكاملة.</span>
+          </div>
+          <UpgradeButton onClick={() => setShowPricing(true)} className="shrink-0 px-4 py-2 text-sm" label="فتح المزايا المتقدمة" />
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col gap-6 overflow-hidden">
         <section className="space-y-4">
@@ -398,25 +421,40 @@ export const MarkdownToPDFTool: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="flex items-center gap-3 cursor-pointer bg-white border border-border rounded-lg p-3">
-                    <input type="checkbox" checked={coverPage} onChange={(e) => setCoverPage(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
-                    <span className="text-sm font-semibold text-primary">صفحة غلاف</span>
+                  <label
+                    onClick={() => { if (!hasAdvanced) setShowPricing(true); }}
+                    className={`flex items-center gap-3 bg-white border border-border rounded-lg p-3 ${!hasAdvanced ? 'opacity-60 cursor-pointer border-amber-200 bg-amber-50/30' : 'cursor-pointer'}`}
+                  >
+                    <input type="checkbox" checked={advancedEnabled(coverPage)} onChange={gateToggle(setCoverPage)} disabled={false} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
+                    <span className="text-sm font-semibold text-primary flex items-center gap-1.5">
+                      صفحة غلاف {!hasAdvanced && <Lock size={12} className="text-amber-500" />}
+                    </span>
                   </label>
-                  <label className="flex items-center gap-3 cursor-pointer bg-white border border-border rounded-lg p-3">
-                    <input type="checkbox" checked={includeToc} onChange={(e) => setIncludeToc(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
-                    <span className="text-sm font-semibold text-primary">فهرس المحتويات</span>
+                  <label
+                    onClick={() => { if (!hasAdvanced) setShowPricing(true); }}
+                    className={`flex items-center gap-3 bg-white border border-border rounded-lg p-3 ${!hasAdvanced ? 'opacity-60 cursor-pointer border-amber-200 bg-amber-50/30' : 'cursor-pointer'}`}
+                  >
+                    <input type="checkbox" checked={advancedEnabled(includeToc)} onChange={gateToggle(setIncludeToc)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
+                    <span className="text-sm font-semibold text-primary flex items-center gap-1.5">
+                      فهرس المحتويات {!hasAdvanced && <Lock size={12} className="text-amber-500" />}
+                    </span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer bg-white border border-border rounded-lg p-3">
                     <input type="checkbox" checked={chapterBreaks} onChange={(e) => setChapterBreaks(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
                     <span className="text-sm font-semibold text-primary">فصل كل ملف بصفحة</span>
                   </label>
-                  <label className="flex items-center gap-3 cursor-pointer bg-white border border-border rounded-lg p-3">
-                    <input type="checkbox" checked={bookmarksEnabled} onChange={(e) => setBookmarksEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
-                    <span className="text-sm font-semibold text-primary">إنشاء إشارات للملفات</span>
+                  <label
+                    onClick={() => { if (!hasAdvanced) setShowPricing(true); }}
+                    className={`flex items-center gap-3 bg-white border border-border rounded-lg p-3 ${!hasAdvanced ? 'opacity-60 cursor-pointer border-amber-200 bg-amber-50/30' : 'cursor-pointer'}`}
+                  >
+                    <input type="checkbox" checked={advancedEnabled(bookmarksEnabled)} onChange={gateToggle(setBookmarksEnabled)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
+                    <span className="text-sm font-semibold text-primary flex items-center gap-1.5">
+                      إنشاء إشارات للملفات {!hasAdvanced && <Lock size={12} className="text-amber-500" />}
+                    </span>
                   </label>
                 </div>
 
-                {coverPage && (
+                {advancedEnabled(coverPage) && (
                   <div className="border border-border rounded-xl p-4 space-y-4 bg-white">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-semibold text-primary">تخصيص الغلاف</h4>
@@ -483,12 +521,15 @@ export const MarkdownToPDFTool: React.FC = () => {
               <>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" checked={headerEnabled} onChange={(e) => setHeaderEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
-                      <span className="text-sm font-semibold text-primary">إظهار الترويسة</span>
+                    <label
+                      onClick={() => { if (!hasAdvanced) setShowPricing(true); }}
+                      className={`flex items-center gap-3 cursor-pointer ${!hasAdvanced ? 'opacity-60' : ''}`}
+                    >
+                      <input type="checkbox" checked={advancedEnabled(headerEnabled)} onChange={gateToggle(setHeaderEnabled)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
+                      <span className="text-sm font-semibold text-primary flex items-center gap-1.5">إظهار الترويسة {!hasAdvanced && <Lock size={12} className="text-amber-500" />}</span>
                     </label>
                   </div>
-                  {headerEnabled && (
+                  {advancedEnabled(headerEnabled) && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="md:col-span-2 space-y-2">
                         <label className="block text-sm font-semibold text-primary">نص الترويسة</label>
@@ -508,12 +549,15 @@ export const MarkdownToPDFTool: React.FC = () => {
 
                 <div className="border-t border-border pt-4 space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" checked={footerEnabled} onChange={(e) => setFooterEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
-                      <span className="text-sm font-semibold text-primary">إظهار التذييل</span>
+                    <label
+                      onClick={() => { if (!hasAdvanced) setShowPricing(true); }}
+                      className={`flex items-center gap-3 cursor-pointer ${!hasAdvanced ? 'opacity-60' : ''}`}
+                    >
+                      <input type="checkbox" checked={advancedEnabled(footerEnabled)} onChange={gateToggle(setFooterEnabled)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
+                      <span className="text-sm font-semibold text-primary flex items-center gap-1.5">إظهار التذييل {!hasAdvanced && <Lock size={12} className="text-amber-500" />}</span>
                     </label>
                   </div>
-                  {footerEnabled && (
+                  {advancedEnabled(footerEnabled) && (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="md:col-span-2 space-y-2">

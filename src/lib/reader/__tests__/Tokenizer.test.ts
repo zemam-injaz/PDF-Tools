@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tokenize, chunkPhrases } from '../Tokenizer';
+import { tokenize, buildChunks } from '../Tokenizer';
 
 describe('tokenize', () => {
   it('returns empty array for empty input', () => {
@@ -22,7 +22,7 @@ describe('tokenize', () => {
 
   it('marks paragraph end on blank line', () => {
     const tokens = tokenize('First paragraph.\n\nSecond paragraph.');
-    const paraBreak = tokens.find(t => t.text === 'paragraph');
+    const paraBreak = tokens.find(t => t.text === 'paragraph.');
     expect(paraBreak?.isParagraphEnd).toBe(true);
   });
 
@@ -70,9 +70,9 @@ describe('tokenize', () => {
       expect(tokens[1].arabicRole).toBeUndefined();
     });
 
-    it('assigns prefix role for Arabic prefixed words', () => {
-      const tokens = tokenize('والكتاب كبير', 'ar');
-      const prefixed = tokens.find(t => t.text.startsWith('و') && t.text.length > 1);
+    it('assigns prefix role for Arabic words with the definite article', () => {
+      const tokens = tokenize('الكتاب كبير', 'ar');
+      const prefixed = tokens.find(t => t.text === 'الكتاب');
       expect(prefixed?.arabicRole).toBe('prefix');
     });
 
@@ -105,21 +105,21 @@ describe('tokenize', () => {
       expect(tokens[0].isSentenceEnd).toBe(true);
     });
 
-    it('marks end of line as sentence end for non-blank-line breaks', () => {
+    it('does not mark sentence end on a bare line break', () => {
       const tokens = tokenize('Line one\nLine two');
-      expect(tokens[1].isSentenceEnd).toBe(true);
+      expect(tokens[1].isSentenceEnd).toBe(false);
     });
   });
 });
 
-describe('chunkPhrases', () => {
+describe('buildChunks', () => {
   it('returns empty for no tokens', () => {
-    expect(chunkPhrases([], 2)).toEqual([]);
+    expect(buildChunks([], 2, 'en')).toEqual([]);
   });
 
   it('groups tokens by target size', () => {
     const tokens = tokenize('the cat jumped over the wall');
-    const chunks = chunkPhrases(tokens, 3);
+    const chunks = buildChunks(tokens, 3, 'en');
     expect(chunks).toHaveLength(2);
     expect(chunks[0]).toHaveLength(3);
     expect(chunks[1]).toHaveLength(3);
@@ -127,13 +127,13 @@ describe('chunkPhrases', () => {
 
   it('with targetSize 1 returns singletons', () => {
     const tokens = tokenize('a b c');
-    const chunks = chunkPhrases(tokens, 1);
+    const chunks = buildChunks(tokens, 1, 'en');
     expect(chunks).toHaveLength(3);
   });
 
   it('with targetSize 2 returns pairs', () => {
     const tokens = tokenize('one two three four');
-    const chunks = chunkPhrases(tokens, 2);
+    const chunks = buildChunks(tokens, 2, 'en');
     expect(chunks).toHaveLength(2);
     expect(chunks[0]).toHaveLength(2);
     expect(chunks[1]).toHaveLength(2);
@@ -141,10 +141,10 @@ describe('chunkPhrases', () => {
     expect(chunks[1][1].text).toBe('four');
   });
 
-  it('attaches Arabic conjunction to previous chunk', () => {
+  it('keeps Arabic conjunction glued with the following word', () => {
     const tokens = tokenize('ذهب محمد و علي', 'ar');
-    const chunks = chunkPhrases(tokens, 3);
-    // "و" is a conjunction, should be grouped with surrounding words
+    const chunks = buildChunks(tokens, 3, 'ar');
     expect(chunks.length).toBeGreaterThanOrEqual(1);
+    expect(chunks[0].map(t => t.text)).toContain('و');
   });
 });

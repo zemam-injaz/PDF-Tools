@@ -2,7 +2,7 @@
 
 **Built**: Tauri v2 + React 19 + Python FastAPI + PyMuPDF  
 **Target**: Arabic-speaking users (RTL UI, Tahweel OCR integration)  
-**Payment**: PayMob — 30-day trial, feature gating per plan
+**Payment**: Gumroad (license/purchase flow) — 30-day trial, feature gating per plan
 
 ---
 
@@ -39,7 +39,7 @@
 
 ### Premium / Gated Features
 
-Tahweel (Google OCR), Watermark editing, Remove Security, Text extraction to file, Speed Reading Trainer, Pro statistics. Unlocked during 30-day free trial, restricted on free plan.
+Tahweel (Google OCR), Watermark editing, Remove Security, Text extraction to file, Pro statistics. **Bookmark insertion & transfer** (إدراج/نقل الفهرس), **Markdown → PDF advanced options** (cover page, TOC, per-file bookmarks, header/footer), and **Reading Speed**: free tier capped at 250 WPM — full speed + session history/charts + smart reading plan are premium. Unlocked during 30-day free trial, restricted on free plan.
 
 ---
 
@@ -47,11 +47,11 @@ Tahweel (Google OCR), Watermark editing, Remove Security, Text extraction to fil
 
 | Feature | Details |
 |---------|---------|
-| **Plan levels** | free / trial (30-day) / monthly (49 EGP) / yearly (299 EGP) / lifetime (899 EGP) |
+| **Plan levels** | free / trial (30-day) / monthly (49 EGP) / annual (299 EGP) / lifetime (899 EGP) |
 | **Feature gating** | Granular flags per feature, checked via React context |
-| **Payment** | PayMob integration — checkout session, HMAC webhook, auto-fulfill |
+| **Payment** | Gumroad License flow — open product page → user buys → enters License Key → Warraq remote API verifies with Gumroad → signed entitlement |
 | **Trial** | Auto-created on first launch, countdown banner |
-| **Storage** | SQLite — users, subscriptions, books, annotations, progress, reading sessions |
+| **Storage** | SQLite — users, subscriptions, gumroad_licenses, books, annotations, progress, reading sessions |
 
 ---
 

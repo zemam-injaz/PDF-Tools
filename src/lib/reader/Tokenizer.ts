@@ -168,7 +168,7 @@ export function buildChunks(
         if (next.type !== 'punctuation') {
           chunk.push(next);
           i++;
-          if (next.type !== 'punctuation') contentWords++;
+          contentWords++;
           if (next.isSentenceEnd || next.isParagraphEnd) break;
         }
       }

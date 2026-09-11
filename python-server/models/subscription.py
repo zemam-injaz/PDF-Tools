@@ -15,6 +15,13 @@ class SubscriptionStatus(str, Enum):
     EXPIRED = "expired"
     CANCELLED = "cancelled"
 
+class EntitlementType(str, Enum):
+    LAUNCH_FREE = "launch_free"
+    TRIAL = "trial"
+    SUBSCRIPTION = "subscription"
+    LIFETIME = "lifetime"
+    EXPIRED = "expired"
+
 class Subscription(BaseModel):
     subscription_id: str
     user_id: str
@@ -24,4 +31,8 @@ class Subscription(BaseModel):
     paid_until: Optional[datetime] = None
     payment_method: Optional[str] = None
     status: SubscriptionStatus
+    entitlement: EntitlementType = EntitlementType.EXPIRED
+    access_until: Optional[datetime] = None
+    last_verified_at: Optional[datetime] = None
+    grace_until: Optional[datetime] = None
     features_enabled: list[str] = []
