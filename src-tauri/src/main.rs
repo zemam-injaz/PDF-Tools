@@ -4,7 +4,7 @@
 
 use std::process::{Command, Child, Stdio};
 use std::sync::Mutex;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 use std::net::TcpListener;
 use std::io::Write;
 #[cfg(target_os = "windows")]
@@ -13,6 +13,7 @@ use tauri::Manager;
 
 struct ServerProcess(Mutex<Option<Child>>);
 struct BackendPort(u16);
+struct BackendToken(String);
 
 /// Find an available port starting from the preferred port
 fn find_available_port(preferred: u16) -> u16 {
@@ -42,6 +43,21 @@ fn get_backend_port(state: tauri::State<BackendPort>) -> u16 {
 }
 
 #[tauri::command]
+fn get_backend_token(state: tauri::State<BackendToken>) -> String {
+    state.0.clone()
+}
+
+fn app_data_file(app: &tauri::AppHandle, name: &str) -> Result<PathBuf, String> {
+    let relative = Path::new(name);
+    if relative.is_absolute() || relative.components().any(|part| matches!(part, Component::ParentDir)) {
+        return Err("App storage path must stay inside the app data directory".to_string());
+    }
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join(relative))
+}
+
+#[tauri::command]
 fn open_in_explorer(path: String) {
     #[cfg(target_os = "windows")]
     {
@@ -61,9 +77,7 @@ fn open_in_explorer(path: String) {
 
 #[tauri::command]
 fn read_app_file(app: tauri::AppHandle, name: String) -> Result<Option<String>, String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = dir.join(name);
+    let path = app_data_file(&app, &name)?;
     match std::fs::read_to_string(&path) {
         Ok(content) => Ok(Some(content)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
@@ -73,9 +87,8 @@ fn read_app_file(app: tauri::AppHandle, name: String) -> Result<Option<String>, 
 
 #[tauri::command]
 fn write_app_file(app: tauri::AppHandle, name: String, content: String) -> Result<(), String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    std::fs::write(dir.join(name), content).map_err(|e| e.to_string())
+    let path = app_data_file(&app, &name)?;
+    std::fs::write(path, content).map_err(|e| e.to_string())
 }
 
 fn find_server_executable(resource_dir: &PathBuf) -> Option<PathBuf> {
@@ -130,15 +143,18 @@ fn log_error(msg: &str) {
 fn main() {
     // Find an available port before starting the server
     let port = find_available_port(8002);
+    let backend_token = uuid::Uuid::new_v4().to_string();
+    let backend_token_for_setup = backend_token.clone();
     println!("Selected backend port: {}", port);
     
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![open_in_explorer, get_backend_port, read_app_file, write_app_file])
+        .invoke_handler(tauri::generate_handler![open_in_explorer, get_backend_port, get_backend_token, read_app_file, write_app_file])
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .manage(BackendPort(port))
+        .manage(BackendToken(backend_token))
         .setup(move |app| {
             let resource_dir = app.path().resource_dir()
                 .unwrap_or_else(|_| std::env::current_dir().unwrap());
@@ -150,7 +166,11 @@ fn main() {
                 
                 let mut cmd = Command::new("python");
                 cmd.arg(&script_path)
-                   .env("PORT", port.to_string());
+                   .env("PORT", port.to_string())
+                   .env("LOCAL_API_TOKEN", &backend_token_for_setup);
+                if !cfg!(debug_assertions) {
+                    cmd.env("LAUNCH_ACCESS_ENABLED", "false");
+                }
                    
                 #[cfg(target_os = "windows")]
                 {
@@ -191,10 +211,14 @@ fn main() {
                 
                 let mut cmd = Command::new(&exe_path);
                 cmd.env("PORT", port.to_string())
+                    .env("LOCAL_API_TOKEN", &backend_token_for_setup)
                     .current_dir(exe_path.parent().unwrap())
                     .stdin(Stdio::null())
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped());
+                if !cfg!(debug_assertions) {
+                    cmd.env("LAUNCH_ACCESS_ENABLED", "false");
+                }
                 
                 #[cfg(target_os = "windows")]
                 {

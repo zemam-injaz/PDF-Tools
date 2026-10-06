@@ -37,6 +37,8 @@ def _cors_origins() -> List[str]:
     """CORS origins from CORS_ALLOW_ORIGINS (comma separated). Default '*' for
     local development only; production must set explicit origins (see .env.example)."""
     raw = os.environ.get("CORS_ALLOW_ORIGINS", "*").strip()
+    if os.environ.get("ENVIRONMENT", "").strip().lower() == "production" and (not raw or raw == "*"):
+        raise RuntimeError("Production requires explicit CORS_ALLOW_ORIGINS; wildcard CORS is disabled")
     if raw == "*":
         return ["*"]
     return [o.strip() for o in raw.split(",") if o.strip()]
@@ -57,6 +59,22 @@ from api.task_routes import router as task_router
 from fastapi.concurrency import run_in_threadpool
 
 app = FastAPI(title="PDF Tools API", version="0.2.0")
+
+@app.middleware("http")
+async def local_api_auth(request, call_next):
+    """Require the per-launch token when the desktop shell provides one.
+
+    Browser development and the public subscription API do not set this
+    variable. The Tauri shell does, which keeps the local PDF service private
+    to the app instance that started it.
+    """
+    expected = os.environ.get("LOCAL_API_TOKEN", "").strip()
+    if expected and request.url.path != "/health":
+        supplied = request.headers.get("X-Local-API-Token", "")
+        if supplied != expected:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized local API request"})
+    return await call_next(request)
 
 app.include_router(subscription_router)
 app.include_router(payment_router)
@@ -1329,9 +1347,10 @@ def extract_tables(request: ExtractTablesRequest):
     import io
     import csv
     import zipfile
-    from openpyxl import Workbook
-    import pdfplumber
+
     try:
+        import pdfplumber  # type: ignore
+        from openpyxl import Workbook  # type: ignore
         all_tables = []
         with pdfplumber.open(request.pdf_path) as pdf:
             for i, page in enumerate(pdf.pages):
@@ -1457,5 +1476,6 @@ async def markdown_to_pdf(request: MarkdownToPDFRequest):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8002))
-    uvicorn.run(app, host="127.0.0.1", port=port)
+    host = os.environ.get("SERVER_HOST", "127.0.0.1")
+    uvicorn.run(app, host=host, port=port)
 

@@ -1,6 +1,7 @@
 import os
 import json
 import pickle
+import sys
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -17,7 +18,17 @@ SCOPES = [
 
 APP_DATA_DIR = os.path.join(os.path.expanduser("~"), ".pdf-tools")
 TOKEN_PATH = os.path.join(APP_DATA_DIR, "tahweel_token.pickle")
-CLIENT_SECRETS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "client_secrets.json")
+
+def _client_secrets_path() -> str:
+    """Resolve OAuth client credentials supplied outside the bundled binary."""
+    configured = os.environ.get("TAHWEEL_CLIENT_SECRETS_PATH", "").strip()
+    candidates = [
+        configured,
+        os.path.join(APP_DATA_DIR, "client_secrets.json"),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "client_secrets.json"),
+        os.path.join(os.path.dirname(os.path.abspath(sys.executable)), "client_secrets.json"),
+    ]
+    return next((path for path in candidates if path and os.path.exists(path)), candidates[0] or "")
 
 class TahweelService:
     def __init__(self):
@@ -83,10 +94,11 @@ class TahweelService:
 
     def authenticate(self):
         """Starts the OAuth2 flow"""
-        if not os.path.exists(CLIENT_SECRETS_PATH):
-            raise FileNotFoundError(f"client_secrets.json not found at {CLIENT_SECRETS_PATH}. Please follow the instructions to create it.")
+        client_secrets_path = _client_secrets_path()
+        if not client_secrets_path or not os.path.exists(client_secrets_path):
+            raise FileNotFoundError("client_secrets.json is not configured. Set TAHWEEL_CLIENT_SECRETS_PATH or place it in the app data directory.")
 
-        flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_PATH, SCOPES)
+        flow = InstalledAppFlow.from_client_secrets_file(client_secrets_path, SCOPES)
         
         # Professional success page with Warraq branding, auto-close countdown
         success_msg = """
@@ -517,4 +529,3 @@ class TahweelService:
             pass
 
 tahweel_service = TahweelService()
-

@@ -99,10 +99,10 @@ export const PricingPage = ({ onClose }: { onClose?: () => void }) => {
           )}
           <h2 className="text-3xl font-bold text-gray-900 mb-4">اختر خطتك المناسبة</h2>
           <p className="text-gray-500 max-w-2xl mx-auto mb-2">
-            الدفع يتم عبر <span className="font-bold text-indigo-600">Gumroad</span> بأمان تام. بعد الشراء، أدخل رمز الترخيص (License Key) لتفعيل اشتراكك.
+            الدفع يتم عبر <span className="font-bold text-indigo-600">Gumroad</span>. بعد الشراء، أدخل رمز الترخيص (License Key) لتفعيل اشتراكك.
           </p>
           <p className="text-xs text-gray-400 max-w-xl mx-auto mb-6">
-            💡 ملحوظة: يُحتسب الدفع بالدولار الأمريكي (USD) عند الدفع على منصة Gumroad بما يعادل الأسعار المعروضة.
+            تظهر العملة النهائية والضرائب وشروط المنتج في صفحة الدفع على Gumroad قبل إتمام الشراء.
           </p>
 
           {!activationPlan && (

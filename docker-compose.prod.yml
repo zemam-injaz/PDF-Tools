@@ -1,0 +1,39 @@
+services:
+  backend:
+    build:
+      context: ./python-server
+      dockerfile: Dockerfile
+    environment:
+      ENVIRONMENT: production
+      SERVER_HOST: 0.0.0.0
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:?Set CORS_ALLOW_ORIGINS to the public app origin}
+      LAUNCH_ACCESS_ENABLED: ${LAUNCH_ACCESS_ENABLED:-false}
+      ENTITLEMENT_PRIVATE_KEY: ${ENTITLEMENT_PRIVATE_KEY:?Set the production Ed25519 private key}
+      GUMROAD_ACCESS_TOKEN: ${GUMROAD_ACCESS_TOKEN:?Set the Gumroad access token}
+    expose:
+      - "8002"
+    volumes:
+      - backend_data:/root/.pdf-tools
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend.prod
+      args:
+        VITE_REMOTE_API_BASE_URL: ${VITE_REMOTE_API_BASE_URL:?Set the public subscription API URL}
+        VITE_ENTITLEMENT_PUBLIC_KEY: ${VITE_ENTITLEMENT_PUBLIC_KEY:?Set the production Ed25519 public key}
+    ports:
+      - "8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  backend_data:

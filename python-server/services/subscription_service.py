@@ -102,7 +102,10 @@ class SubscriptionService:
         return _env_dt("LAUNCH_ACCESS_UNTIL", "2027-03-01T00:00:00")
 
     def _launch_active(self) -> bool:
-        if not _env_bool("LAUNCH_ACCESS_ENABLED", True):
+        # Production must opt into a launch giveaway explicitly. A missing
+        # variable must never unlock every feature after deployment.
+        default_enabled = os.environ.get("ENVIRONMENT", "").strip().lower() != "production"
+        if not _env_bool("LAUNCH_ACCESS_ENABLED", default_enabled):
             return False
         until = self._launch_until()
         if until is None:

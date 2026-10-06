@@ -1,12 +1,17 @@
 // Dynamic port management - fetched from Tauri backend
 let BASE_URL = 'http://127.0.0.1:8002'; // Default fallback
 let portInitialized = false;
+let LOCAL_API_TOKEN = '';
 
 // Remote base for subscription/payment/entitlement — configured at build time
 // via VITE_REMOTE_API_BASE_URL. Never falls back to localhost (see remoteRequest).
 const REMOTE_BASE_URL = (import.meta.env.VITE_REMOTE_API_BASE_URL || '')
   .trim()
   .replace(/\/+$/, '');
+const CONFIGURED_LOCAL_BASE_URL = (import.meta.env.VITE_LOCAL_API_BASE_URL || '')
+  .trim()
+  .replace(/\/+$/, '');
+const HAS_LOCAL_BASE_OVERRIDE = import.meta.env.VITE_LOCAL_API_BASE_URL !== undefined;
 
 // Initialize the API with the correct port from Tauri
 async function initializeBackendPort(): Promise<void> {
@@ -14,8 +19,8 @@ async function initializeBackendPort(): Promise<void> {
 
   // Check for Docker override
   if (import.meta.env.VITE_USE_DOCKER_BACKEND === 'true') {
-    BASE_URL = 'http://127.0.0.1:8002';
-    console.log('[API] Using Docker Backend override: 8002');
+    BASE_URL = HAS_LOCAL_BASE_OVERRIDE ? CONFIGURED_LOCAL_BASE_URL : 'http://127.0.0.1:8002';
+    console.log(`[API] Using configured local backend: ${BASE_URL || '(same origin)'}`);
     portInitialized = true;
     return;
   }
@@ -25,6 +30,7 @@ async function initializeBackendPort(): Promise<void> {
       const { invoke } = await import('@tauri-apps/api/core');
       const port = await invoke<number>('get_backend_port');
       BASE_URL = `http://127.0.0.1:${port}`;
+      LOCAL_API_TOKEN = await invoke<string>('get_backend_token');
       console.log(`[API] Backend port initialized: ${port}`);
     } catch (e) {
       console.warn('[API] Could not get backend port from Tauri, using default:', e);
@@ -69,7 +75,11 @@ async function request<T>(endpoint: string, method: 'GET' | 'POST' = 'GET', body
   try {
     const options: RequestInit = {
       method,
-      headers: { 'Content-Type': 'application/json', ...headers },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(LOCAL_API_TOKEN ? { 'X-Local-API-Token': LOCAL_API_TOKEN } : {}),
+        ...headers,
+      },
     };
     if (body) options.body = JSON.stringify(body);
 
@@ -123,12 +133,26 @@ async function remoteRequest<T>(endpoint: string, method: 'GET' | 'POST' = 'GET'
     return { success: false, error: message };
   }
   const url = `${REMOTE_BASE_URL}${endpoint}`;
+  let isLocalRemote = false;
+  try {
+    const remoteUrl = new URL(REMOTE_BASE_URL);
+    isLocalRemote = remoteUrl.hostname === '127.0.0.1' || remoteUrl.hostname === 'localhost';
+  } catch {
+    return { success: false, error: 'Remote API URL is invalid' };
+  }
+  if (isLocalRemote) {
+    await initializeBackendPort();
+  }
   console.log(`[Remote API Request] ${method} ${url}`, body);
 
   try {
     const options: RequestInit = {
       method,
-      headers: { 'Content-Type': 'application/json', ...headers },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(isLocalRemote && LOCAL_API_TOKEN ? { 'X-Local-API-Token': LOCAL_API_TOKEN } : {}),
+        ...headers,
+      },
     };
     if (body) options.body = JSON.stringify(body);
 

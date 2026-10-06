@@ -391,7 +391,9 @@ class BookmarkService:
                 doc.close()
             except Exception:
                 pass
-            raise last_error
+            if last_error is not None:
+                raise last_error
+            raise Exception("Split by bookmarks failed")
         except Exception as e:
             raise Exception(f"Split by bookmarks failed: {str(e)}")
 

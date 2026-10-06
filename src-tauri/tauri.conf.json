@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": null,
+      "csp": "default-src 'self' asset:; connect-src 'self' http://127.0.0.1:* https://api.warraq.app; img-src 'self' asset: data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; frame-src 'self'",
       "assetProtocol": {
         "enable": true,
         "scope": [
