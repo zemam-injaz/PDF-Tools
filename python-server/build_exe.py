@@ -21,9 +21,12 @@ def build_exe():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     
+    work_dir = os.environ.get("PYINSTALLER_WORK_DIR", "build")
+    dist_dir = os.environ.get("PYINSTALLER_DIST_DIR", "dist")
+
     # Clean previous builds
     import time
-    for folder in ['build', 'dist']:
+    for folder in [work_dir, dist_dir]:
         if os.path.exists(folder):
             print(f"Cleaning {folder}...")
             # Try multiple times to handle Windows file locks
@@ -37,12 +40,22 @@ def build_exe():
                         print(f"  Access denied for {folder}, retrying in 1s... ({i+1}/{max_retries})")
                         time.sleep(1)
                     else:
-                        print(f"  ⚠️ Warning: Could not fully clean {folder}: {e}")
+                        print(f"  WARNING: Could not fully clean {folder}: {e}")
                         print("  Continuing anyway, PyInstaller may still succeed.")
                 except Exception as e:
-                    print(f"  ⚠️ Warning: Error cleaning {folder}: {e}")
+                    print(f"  WARNING: Error cleaning {folder}: {e}")
                     break
     
+    # These packages may exist in a developer's global Python environment, but
+    # Warraq's backend does not import them. Excluding them keeps the bundled
+    # service deterministic and avoids hundreds of megabytes of accidental ML
+    # and scientific-runtime dependencies.
+    excluded_modules = [
+        "torch", "torchvision", "torchaudio", "onnxruntime", "tensorflow",
+        "scipy", "pandas", "numpy", "matplotlib", "numba", "llvmlite",
+        "pyarrow", "pygame", "sqlalchemy", "sklearn", "cv2",
+    ]
+
     # PyInstaller command
     pyinstaller_args = [
         sys.executable, "-m", "PyInstaller",
@@ -51,6 +64,8 @@ def build_exe():
         "--noconfirm",         # Overwrite without asking
         "--clean",             # Clean cache before building
         "--name", "pdf_server", # Output name
+        "--workpath", work_dir,
+        "--distpath", dist_dir,
         "--add-data", f"services{os.pathsep}services",  # Include services folder
         "--hidden-import", "uvicorn.logging",
         "--hidden-import", "uvicorn.loops",
@@ -79,6 +94,7 @@ def build_exe():
         "--collect-submodules", "fitz",
         "--collect-submodules", "docx",
         "--collect-submodules", "services",
+        *[arg for module in excluded_modules for arg in ("--exclude-module", module)],
         "server.py"            # Entry point
     ]
     
@@ -87,10 +103,10 @@ def build_exe():
     
     try:
         subprocess.check_call(pyinstaller_args)
-        print("\n✅ Build successful!")
-        print(f"📦 Executable created: {os.path.join(script_dir, 'dist', 'pdf_server.exe')}")
+        print("\nBuild successful!")
+        print(f"Executable created: {os.path.join(script_dir, dist_dir, 'pdf_server.exe')}")
     except subprocess.CalledProcessError as e:
-        print(f"❌ Build failed: {e}")
+        print(f"Build failed: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

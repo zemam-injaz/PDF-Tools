@@ -7,13 +7,20 @@ import { useSubscription } from '../../contexts/SubscriptionContext';
 import { PricingPage } from '../pricing/PricingPage';
 import { UpgradeButton } from '../pricing/UpgradeButton';
 
-export const TahweelTool: React.FC = () => {
+interface TahweelToolProps {
+  initialPath?: string;
+}
+
+export const TahweelTool: React.FC<TahweelToolProps> = ({ initialPath = '' }) => {
   const { checkAccess } = useSubscription();
   const [showPricing, setShowPricing] = useState(false);
   const hasAccess = checkAccess('tahweel');
 
-  const [inputPath, setInputPath] = useState('');
-  const [outputDir, setOutputDir] = useState('');
+  const [inputPath, setInputPath] = useState(initialPath);
+  const [outputDir, setOutputDir] = useState(() => {
+    const lastSep = Math.max(initialPath.lastIndexOf('/'), initialPath.lastIndexOf('\\'));
+    return lastSep > 0 ? initialPath.substring(0, lastSep) : '';
+  });
   const [removeNewlines, setRemoveNewlines] = useState(true);
   
   const [isFolderMode, setIsFolderMode] = useState(false);

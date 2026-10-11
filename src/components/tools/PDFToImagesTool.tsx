@@ -3,9 +3,16 @@ import { api } from '../../lib/api';
 import { Image as ImageIcon, ArrowRight, CheckCircle, AlertCircle, Settings, Monitor, Printer } from 'lucide-react';
 import { FileInput } from '../ui/FileInput';
 
-export const PDFToImagesTool: React.FC = () => {
-  const [inputPath, setInputPath] = useState('');
-  const [outputDir, setOutputDir] = useState('');
+interface PDFToImagesToolProps {
+  initialPath?: string;
+}
+
+export const PDFToImagesTool: React.FC<PDFToImagesToolProps> = ({ initialPath = '' }) => {
+  const [inputPath, setInputPath] = useState(initialPath);
+  const [outputDir, setOutputDir] = useState(() => {
+    const lastSep = Math.max(initialPath.lastIndexOf('/'), initialPath.lastIndexOf('\\'));
+    return lastSep > 0 ? initialPath.substring(0, lastSep) : '';
+  });
   const [format, setFormat] = useState<'png' | 'jpg'>('png');
   const [dpi, setDpi] = useState(150);
   const [loading, setLoading] = useState(false);

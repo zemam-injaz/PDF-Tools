@@ -52,6 +52,17 @@ export async function getApiBaseUrl(): Promise<string> {
 }
 
 /**
+ * Authenticated fetch for modules that need direct access to the local Python
+ * service. This keeps the dynamic port and per-launch token in one place.
+ */
+export async function localApiFetch(endpoint: string, init: RequestInit = {}): Promise<Response> {
+  await initializeBackendPort();
+  const headers = new Headers(init.headers);
+  if (LOCAL_API_TOKEN) headers.set('X-Local-API-Token', LOCAL_API_TOKEN);
+  return fetch(`${BASE_URL}${endpoint}`, { ...init, headers });
+}
+
+/**
  * Get the configured REMOTE API base URL (subscription/payment/entitlement).
  * Returns an empty string when VITE_REMOTE_API_BASE_URL is not configured —
  * remote calls are then rejected by remoteRequest (never routed to localhost).

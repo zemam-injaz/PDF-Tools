@@ -92,10 +92,17 @@ const ThumbnailItem: React.FC<{
   );
 };
 
-export const PDFSplitTool: React.FC = () => {
-  const [inputPath, setInputPath] = useState('');
+interface PDFSplitToolProps {
+  initialPath?: string;
+}
+
+export const PDFSplitTool: React.FC<PDFSplitToolProps> = ({ initialPath = '' }) => {
+  const [inputPath, setInputPath] = useState(initialPath);
   const [splitPages, setSplitPages] = useState('');
-  const [outputDir, setOutputDir] = useState('');
+  const [outputDir, setOutputDir] = useState(() => {
+    const lastSep = Math.max(initialPath.lastIndexOf('/'), initialPath.lastIndexOf('\\'));
+    return lastSep > 0 ? initialPath.substring(0, lastSep) : '';
+  });
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
 

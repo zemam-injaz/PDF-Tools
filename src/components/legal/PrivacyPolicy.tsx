@@ -17,7 +17,7 @@ export const PrivacyPolicy = ({ onBack }: { onBack?: () => void }) => {
         <section>
           <h2 className="text-xl font-bold text-gray-900 mb-3">1. المعلومات التي نجمعها</h2>
           <p>
-            نحن في "وراق" نولي أهمية قصوى لخصوصيتك. التطبيق يعمل بشكل أساسي على جهازك المحلي.
+            نحن في "مَتن" نولي أهمية قصوى لخصوصيتك. التطبيق يعمل بشكل أساسي على جهازك المحلي.
             المعلومات التي قد يتم جمعها تشمل:
           </p>
           <ul className="list-disc list-inside mt-2 space-y-1 pr-4">

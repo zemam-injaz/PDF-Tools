@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;font-family:'IBM Plex Sans Arabic',sans-serif;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-dim":"#d0daef","surface-container-highest":"#d9e3f7","surface-variant":"#d9e3f7","surface-bright":"#f9f9ff","on-secondary-fixed-variant":"#004395","tertiary-container":"#00554e","surface-tint":"#3755c3","on-tertiary":"#ffffff","outline-variant":"#c4c5d5","tertiary":"#003c36","surface-container-lowest":"#ffffff","surface":"#f9f9ff","on-tertiary-container":"#5fcdbf","surface-container":"#e6eeff","tertiary-fixed-dim":"#6bd8cb","primary-fixed-dim":"#b8c4ff","error-container":"#ffdad6","secondary":"#0058be","on-surface":"#121c2a","on-background":"#121c2a","on-primary":"#ffffff","surface-container-high":"#dee9fd","on-primary-fixed":"#001453","primary-fixed":"#dde1ff","inverse-surface":"#273140","on-primary-container":"#a8b8ff","background":"#f9f9ff","on-primary-fixed-variant":"#173bab","tertiary-fixed":"#89f5e7","primary":"#00288e","on-secondary-container":"#fefcff","on-tertiary-fixed-variant":"#005049","on-tertiary-fixed":"#00201d","error":"#ba1a1a","primary-container":"#1e40af","on-error-container":"#93000a","secondary-container":"#2170e4","on-surface-variant":"#444653","surface-container-low":"#eff3ff","inverse-primary":"#b8c4ff","on-error":"#ffffff","secondary-fixed-dim":"#adc6ff","secondary-fixed":"#d8e2ff","outline":"#757684","inverse-on-surface":"#ebf1ff","on-secondary":"#ffffff","on-secondary-fixed":"#001a42"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-sm":"0.5rem","margin":"1rem","gutter":"1rem","space-md":"0.75rem","space-xs":"0.25rem","space-lg":"1rem","space-xl":"1.5rem"},"fontFamily":{"body-sm":["IBM Plex Sans"],"headline-xl":["IBM Plex Sans"],"headline-md":["IBM Plex Sans"],"body-lg":["IBM Plex Sans"],"label-sm":["IBM Plex Sans"],"body-md":["IBM Plex Sans"],"label-md":["IBM Plex Sans"],"code-sm":["JetBrains Mono"],"headline-lg":["IBM Plex Sans"]},"fontSize":{"body-sm":["0.8125rem",{"lineHeight":"1.375rem","fontWeight":"400"}],"headline-xl":["1.75rem",{"lineHeight":"2.25rem","letterSpacing":"-0.01em","fontWeight":"600"}],"headline-md":["1rem",{"lineHeight":"1.5rem","fontWeight":"600"}],"body-lg":["0.9375rem",{"lineHeight":"1.6rem","fontWeight":"400"}],"label-sm":["0.75rem",{"lineHeight":"1rem","fontWeight":"500"}],"body-md":["0.875rem",{"lineHeight":"1.5rem","fontWeight":"400"}],"label-md":["0.8125rem",{"lineHeight":"1.125rem","fontWeight":"500"}],"code-sm":["0.75rem",{"lineHeight":"1.125rem","fontWeight":"400"}],"headline-lg":["1.25rem",{"lineHeight":"1.75rem","letterSpacing":"-0.005em","fontWeight":"600"}]}}}}</script></head><body class="bg-surface text-on-surface select-none antialiased"><header class="fixed top-0 left-0 right-0 h-14 z-50 bg-surface/90 backdrop-blur-md flex items-center justify-between px-space-lg shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-space-md"><div class="flex items-center gap-1.5 px-space-xs"><span class="w-3 h-3 rounded-full bg-error/80 inline-block"></span><span class="w-3 h-3 rounded-full bg-tertiary-fixed-dim/80 inline-block"></span><span class="w-3 h-3 rounded-full bg-secondary-container/80 inline-block"></span></div><img alt="Warraq App Icon" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1W9U1FD-kTN6-L8FjfpENuLmdz3TR8b0Ki5Mnpn3sy9glVNpon-zaqgY6XtchtKgBcoriIzXAxmmhrCwIt8OPL-ju0TX8H1hJmJQKmCkbKF8bn9kdghNVqUcgRUnBv0GiyMn5YLx3YPtjeTBMs0qjPxu1uo7mZY66N4yqBt14QXbRDUt7gU0frWymNvEAFKc8iyWdCZYiUScZnIj1WkOKyETxUMaHI8yIxPqJaWEM0Ynq4SYrMu-ZfFG2A"/><span class="font-headline-md text-headline-md text-on-surface">وراق <span class="font-body-sm text-body-sm text-on-surface-variant font-normal">| Warraq</span></span></div><div class="flex-1 max-w-xl mx-space-xl"><div class="flex items-center justify-between bg-surface-container-lowest px-space-md py-1.5 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-space-sm text-on-surface-variant"><span class="material-symbols-outlined text-[18px]">search</span><span class="font-body-sm text-body-sm text-on-surface-variant">ابحث عن أداة أو ملف أو كتاب...</span></div><div class="flex items-center gap-1 font-code-sm text-code-sm text-on-surface-variant bg-surface-container-low px-space-xs py-0.5 rounded"><span class="text-[11px]">⌘</span><span>K</span></div></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs bg-surface-container-low px-space-md py-1 rounded-full text-secondary font-label-sm text-label-sm"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span>2 مهام جارية</span></div><button class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">tune</span></button><button class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">help_outline</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><aside class="fixed right-0 top-14 bottom-0 w-60 z-40 bg-surface-container-low flex flex-col justify-between py-space-md px-space-sm"><div class="flex flex-col gap-space-lg"><div class="px-space-sm pt-space-xs"><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider block">مساحة العمل المحلية</span><span class="font-body-sm text-body-sm text-on-surface-variant">إصدار سطح المكتب الهجين</span></div><nav class="flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary font-bold rounded-lg"><a aria-current="page" class="flex items-center gap-space-sm px-space-md py-2 transition-colors bg-primary-container text-on-primary font-bold rounded-lg" data-path="home-workspace" href="#"><span class="material-symbols-outlined text-[20px]">home</span><span class="font-body-md text-body-md">الرئيسة</span></a><a class="flex items-center gap-space-sm px-space-md py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="pdf-tools-directory" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="font-body-md text-body-md">دليل الأدوات</span></a><a class="flex items-center gap-space-sm px-space-md py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="library-and-reader" href="#"><span class="material-symbols-outlined text-[20px]">menu_book</span><span class="font-body-md text-body-md">المكتبة والقراءة</span></a><a class="flex items-center gap-space-sm px-space-md py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="task-history-and-monitor" href="#"><span class="material-symbols-outlined text-[20px]">browse_activity</span><span class="font-body-md text-body-md">سجل المهام</span></a></nav></div><div class="flex flex-col gap-space-sm pt-space-md"><nav class="flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary font-bold rounded-lg"><a class="flex items-center gap-space-sm px-space-md py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings-and-preferences" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-body-md text-body-md">الخطة والإعدادات</span></a></nav><div class="mx-space-xs p-space-sm rounded-lg bg-surface-container flex items-center gap-space-xs text-tertiary-container"><span class="material-symbols-outlined text-[16px] text-tertiary-container">verified_user</span><div class="flex flex-col"><span class="font-label-sm text-label-sm text-on-surface font-medium leading-tight">خصوصية محلية 100%</span><span class="text-[10px] text-on-surface-variant leading-tight">المعالجة تتم بالكامل داخل عتادك</span></div></div><div class="flex items-center justify-between px-space-md pt-space-xs text-on-surface-variant font-code-sm text-code-sm"><span>Tauri Desktop</span><span class="font-code-sm text-code-sm text-outline">v1.4.2</span></div></div></aside><div class="pr-60"><main class="w-full pt-14 min-h-screen bg-surface px-space-lg py-space-lg"><div class="flex flex-col w-full gap-space-lg select-none" dir="rtl">
+<!-- 1. Top Compact Header & Privacy Verification Bar -->
+<section class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md bg-surface-container-lowest p-space-lg rounded-xl shadow-sm">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-space-sm">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">مرحباً بك في وراق</h1>
+<span class="inline-flex items-center gap-1 px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant font-code-sm text-code-sm">
+<span>Tauri Local Engine</span>
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">مساحة عمل مستندات PDF الاحترافية والمعالجة الموضعية على حاسوبك</p>
+</div>
+<!-- Security & Offline Guarantee Pill -->
+<div class="flex items-center gap-space-sm bg-surface-container-low px-space-md py-space-sm rounded-lg self-start sm:self-auto">
+<span class="material-symbols-outlined text-[18px] text-tertiary-container" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">المعالجة داخلية 100% بدون سحابة</span>
+<span class="text-[11px] text-on-surface-variant leading-tight">ملفاتك لا تغادر ذاكرة جهازك وتُعالج بواسطة المحرك المحلي</span>
+</div>
+</div>
+</section>
+<!-- 2. Primary File Drop / Import Workspace Zone -->
+<section class="relative group bg-surface-container-lowest rounded-xl p-space-xl shadow-sm transition-all duration-200 hover:shadow-md" id="drop-zone">
+<div class="flex flex-col items-center justify-center text-center py-space-lg px-space-md bg-surface-container-low rounded-lg transition-colors group-hover:bg-surface-container">
+<!-- Icon with Badge -->
+<div class="relative mb-space-md">
+<div class="w-14 h-14 rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-[32px]">picture_as_pdf</span>
+</div>
+<span class="absolute -top-1 -start-1 w-6 h-6 rounded-full bg-secondary-container text-on-secondary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[16px]">add</span>
+</span>
+</div>
+<!-- Action Headings -->
+<h2 class="font-headline-md text-headline-md text-on-surface mb-1">ابدأ بملف أو أسقطه هنا</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-lg mb-space-lg">
+        اسحب أي ملف PDF أو اختر من مساحات التخزين المحلية للبدء المباشر بأدوات التحرير والتحويل
+      </p>
+<!-- Primary Action Buttons Group -->
+<div class="flex flex-wrap items-center justify-center gap-space-md mb-space-lg">
+<button class="inline-flex items-center gap-space-sm bg-primary-container text-on-primary px-space-lg py-2 rounded-lg font-label-md text-label-md shadow-sm hover:bg-primary transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+<span>استعراض الملفات</span>
+<span class="font-code-sm text-code-sm bg-surface-container-lowest/20 px-1.5 py-0.5 rounded text-on-primary" dir="ltr">Ctrl+O</span>
+</button>
+<button class="inline-flex items-center gap-space-sm bg-surface-container-lowest text-on-surface-variant px-space-lg py-2 rounded-lg font-label-md text-label-md shadow-sm hover:bg-surface-container-high hover:text-on-surface transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">content_paste</span>
+<span>لصق من الحافظة</span>
+<span class="font-code-sm text-code-sm bg-surface-container px-1.5 py-0.5 rounded" dir="ltr">Ctrl+V</span>
+</button>
+</div>
+<!-- Meta Pill -->
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[15px] text-outline">info</span>
+<span>يدعم PDF حتى 2GB، صور TIFF، والمستندات متعددة الصفحات الممسوحة ضوئياً</span>
+</div>
+</div>
+</section>
+<!-- 3. Quick PDF Actions Grid (6 Direct Native Tools) -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between px-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px] text-primary-container">bolt</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">أدوات المعالجة السريعة</h3>
+</div>
+<a class="font-label-md text-label-md text-secondary hover:text-primary transition-colors flex items-center gap-1" href="#">
+<span>عرض كافة الأدوات الـ 24</span>
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md">
+<!-- Action 1: Merge -->
+<div class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex items-start gap-space-md cursor-pointer" role="button">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low text-primary-container flex items-center justify-center flex-shrink-0 group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[22px]">call_merge</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between mb-0.5">
+<span class="font-headline-md text-headline-md text-on-surface group-hover:text-primary-container transition-colors">دمج PDF</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant opacity-60 group-hover:opacity-100" dir="ltr">M</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">دمج عدة مستندات بترتيب مخصص وحفظ الفهارس</p>
+</div>
+</div>
+<!-- Action 2: Split -->
+<div class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex items-start gap-space-md cursor-pointer" role="button">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low text-primary-container flex items-center justify-center flex-shrink-0 group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[22px]">call_split</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between mb-0.5">
+<span class="font-headline-md text-headline-md text-on-surface group-hover:text-primary-container transition-colors">تقسيم المستند</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant opacity-60 group-hover:opacity-100" dir="ltr">S</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">فصل الصفحات الفردية أو استخراج نطاق محدد</p>
+</div>
+</div>
+<!-- Action 3: Compress -->
+<div class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex items-start gap-space-md cursor-pointer" role="button">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low text-primary-container flex items-center justify-center flex-shrink-0 group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[22px]">compress</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between mb-0.5">
+<span class="font-headline-md text-headline-md text-on-surface group-hover:text-primary-container transition-colors">ضغط الحجم الذكي</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant opacity-60 group-hover:opacity-100" dir="ltr">C</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">تقليص الحجم حتى 70% مع بقاء وضوح النصوص</p>
+</div>
+</div>
+<!-- Action 4: Extract Text -->
+<div class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex items-start gap-space-md cursor-pointer" role="button">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low text-primary-container flex items-center justify-center flex-shrink-0 group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[22px]">text_fields</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between mb-0.5">
+<span class="font-headline-md text-headline-md text-on-surface group-hover:text-primary-container transition-colors">استخراج النص والجداول</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant opacity-60 group-hover:opacity-100" dir="ltr">E</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">تصدير المحتوى إلى Markdown أو Excel أو نص خام</p>
+</div>
+</div>
+<!-- Action 5: OCR (Tahweel) -->
+<div class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex items-start gap-space-md cursor-pointer" role="button">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low text-primary-container flex items-center justify-center flex-shrink-0 group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[22px]">document_scanner</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between mb-0.5">
+<div class="flex items-center gap-1">
+<span class="font-headline-md text-headline-md text-on-surface group-hover:text-primary-container transition-colors">التعرف الضوئي OCR</span>
+<span class="px-1 py-0.2 bg-tertiary-container/15 text-tertiary font-label-sm text-[10px] rounded">عربي</span>
+</div>
+<span class="font-code-sm text-code-sm text-on-surface-variant opacity-60 group-hover:opacity-100" dir="ltr">O</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">تحويل المستندات المصورة لنصوص عربية دقيقة قابلة للبحث</p>
+</div>
+</div>
+<!-- Action 6: PDF to Images -->
+<div class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex items-start gap-space-md cursor-pointer" role="button">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low text-primary-container flex items-center justify-center flex-shrink-0 group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[22px]">image</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between mb-0.5">
+<span class="font-headline-md text-headline-md text-on-surface group-hover:text-primary-container transition-colors">تحويل إلى صور</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant opacity-60 group-hover:opacity-100" dir="ltr">I</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">تصدير الصفحات بدقة 300DPI بصيغ PNG و JPG</p>
+</div>
+</div>
+</div>
+</section>
+<!-- 4. Two-Column Lower Utility Split: Recent Documents & Task Monitor -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- Right Column (60%): Recent Documents Table -->
+<div class="lg:col-span-7 bg-surface-container-lowest rounded-xl shadow-sm flex flex-col overflow-hidden">
+<!-- Section Header -->
+<div class="flex items-center justify-between p-space-md bg-surface-container-lowest">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">history</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">الملفات الأخيرة</h3>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-low text-on-surface-variant font-code-sm text-[11px]">18 ملف</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface" title="تصفية الملفات" type="button">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface" title="فتح مجلد العمل" type="button">
+<span class="material-symbols-outlined text-[18px]">folder</span>
+</button>
+</div>
+</div>
+<!-- Table Container -->
+<div class="overflow-x-auto">
+<table class="w-full text-start text-on-surface">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm text-start">
+<th class="py-2 px-space-md text-start font-medium">اسم المستند</th>
+<th class="py-2 px-space-sm text-start font-medium">آخر إجراء</th>
+<th class="py-2 px-space-sm text-start font-medium">الحجم</th>
+<th class="py-2 px-space-sm text-start font-medium">التاريخ</th>
+<th class="py-2 px-space-md text-end font-medium">إجراءات</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer">
+<td class="py-2.5 px-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-error">picture_as_pdf</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface truncate group-hover:text-primary-container" dir="rtl">تقرير_الربع_الأول_2024_النهائي.pdf</span>
+<span class="font-code-sm text-[10px] text-outline" dir="ltr">~/Documents/Finance/Q1_2024.pdf</span>
+</div>
+</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed-variant font-code-sm text-[11px]">
+<span>تم الضغط</span>
+<span dir="ltr">(-42%)</span>
+</span>
+</td>
+<td class="py-2.5 px-space-sm font-code-sm text-code-sm text-on-surface-variant" dir="ltr">4.2 MB</td>
+<td class="py-2.5 px-space-sm text-on-surface-variant text-start">منذ 25 دقيقة</td>
+<td class="py-2.5 px-space-md text-end">
+<div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-primary-container" title="فتح المستند" type="button">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container" title="عرض في المجلد" type="button">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container" title="المزيد" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer">
+<td class="py-2.5 px-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-error">picture_as_pdf</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface truncate group-hover:text-primary-container" dir="rtl">عقد_تأسيس_الشركة_موقع.pdf</span>
+<span class="font-code-sm text-[10px] text-outline" dir="ltr">~/Legal/Contracts/Signed_Articles.pdf</span>
+</div>
+</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container text-on-surface font-code-sm text-[11px]">
+<span>حماية وتوقيع</span>
+</span>
+</td>
+<td class="py-2.5 px-space-sm font-code-sm text-code-sm text-on-surface-variant" dir="ltr">1.8 MB</td>
+<td class="py-2.5 px-space-sm text-on-surface-variant text-start">أمس 04:15 م</td>
+<td class="py-2.5 px-space-md text-end">
+<div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-primary-container" title="فتح المستند" type="button">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container" title="عرض في المجلد" type="button">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container" title="المزيد" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer">
+<td class="py-2.5 px-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-error">picture_as_pdf</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface truncate group-hover:text-primary-container" dir="rtl">كتاب_مقدمة_ابن_خلدون_نسخة_محققة.pdf</span>
+<span class="font-code-sm text-[10px] text-outline" dir="ltr">~/Library/History/Ibn_Khaldun_Intro.pdf</span>
+</div>
+</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface font-code-sm text-[11px]">
+<span>قراءة (ص 142)</span>
+</span>
+</td>
+<td class="py-2.5 px-space-sm font-code-sm text-code-sm text-on-surface-variant" dir="ltr">18.5 MB</td>
+<td class="py-2.5 px-space-sm text-on-surface-variant text-start">12 أكتوبر</td>
+<td class="py-2.5 px-space-md text-end">
+<div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-primary-container" title="متابعة القراءة" type="button">
+<span class="material-symbols-outlined text-[18px]">menu_book</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container" title="عرض في المجلد" type="button">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container" title="المزيد" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer">
+<td class="py-2.5 px-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-error">picture_as_pdf</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface truncate group-hover:text-primary-container" dir="rtl">أبحاث_الذكاء_الاصطناعي_مترجمة.pdf</span>
+<span class="font-code-sm text-[10px] text-outline" dir="ltr">~/Research/AI_Arabic_2024.pdf</span>
+</div>
+</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed-variant font-code-sm text-[11px]">
+<span>OCR مستخرج</span>
+</span>
+</td>
+<td class="py-2.5 px-space-sm font-code-sm text-code-sm text-on-surface-variant" dir="ltr">9.1 MB</td>
+<td class="py-2.5 px-space-sm text-on-surface-variant text-start">10 أكتوبر</td>
+<td class="py-2.5 px-space-md text-end">
+<div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-primary-container" title="فتح المستند" type="button">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container" title="عرض في المجلد" type="button">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container" title="المزيد" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Shortcut Info -->
+<div class="p-space-sm bg-surface-container-low flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>إجمالي مساحة الذاكرة المخبأة: <span class="font-code-sm" dir="ltr">33.6 MB</span></span>
+<a class="text-secondary hover:text-primary transition-colors flex items-center gap-1" href="#">
+<span>فتح كافة الملفات</span>
+<span class="font-code-sm text-[11px]" dir="ltr">⌘+L</span>
+</a>
+</div>
+</div>
+<!-- Left Column (40%): Active Jobs & Background Task Monitor -->
+<div class="lg:col-span-5 flex flex-col gap-space-md">
+<!-- Activity Card Header -->
+<div class="flex items-center justify-between px-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px] text-secondary">memory</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">المهام الجارية والنشاط</h3>
+</div>
+<div class="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span>محرك قيد العمل</span>
+</div>
+</div>
+<!-- Active Job In Progress Card -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col gap-space-sm relative overflow-hidden">
+<div class="absolute top-0 start-0 bottom-0 w-1 bg-secondary-container"></div>
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[22px] text-secondary animate-spin">sync</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">ضغط وتصغير حجم الملف</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant truncate max-w-[200px]" dir="rtl">تقرير_الأداء_السنوي.pdf</span>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container" title="إيقاف مؤقت" type="button">
+<span class="material-symbols-outlined text-[16px]">pause</span>
+</button>
+<button class="p-1 rounded text-error hover:bg-error-container" title="إلغاء" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</div>
+<!-- Progress Metrics -->
+<div class="flex flex-col gap-1 mt-1">
+<div class="flex items-center justify-between font-label-sm text-label-sm">
+<span class="text-on-surface-variant">معالجة 45 من 64 صفحة...</span>
+<span class="font-code-sm text-code-sm text-secondary font-bold" dir="ltr">68%</span>
+</div>
+<!-- Tactile Progress Bar -->
+<div class="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
+<div class="h-full bg-secondary-container rounded-full transition-all duration-300" style="width: 68%;"></div>
+</div>
+<div class="flex items-center justify-between text-[11px] text-on-surface-variant font-code-sm pt-0.5">
+<span>السرعة: 12 صفحة/ثانية</span>
+<span>متبقي: ~4 ثوانٍ</span>
+</div>
+</div>
+</div>
+<!-- Completed Task Notification Card -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-tertiary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-medium">دمج 4 مستندات مالية</span>
+<span class="font-code-sm text-[11px] text-outline">ملف المخرج: Financial_Consolidated.pdf</span>
+</div>
+</div>
+<span class="font-code-sm text-[11px] text-on-surface-variant">منذ 10 د</span>
+</div>
+<div class="flex items-center justify-between pt-space-xs">
+<span class="font-body-sm text-[11px] text-tertiary-container font-medium">اكتمل بنجاح دون أخطاء</span>
+<button class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[15px]">folder_open</span>
+<span>فتح المجلد</span>
+</button>
+</div>
+</div>
+<!-- System Diagnostic Mini-card -->
+<div class="bg-surface-container-low p-space-md rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">speed</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-medium">حالة المحرك المحلي</span>
+<span class="font-code-sm text-[11px] text-on-surface-variant">ذاكرة RAM المستخدمة: 142 MB • حرارة المعالج طبيعية</span>
+</div>
+</div>
+<a class="font-label-sm text-label-sm text-secondary hover:text-primary font-medium flex items-center gap-0.5" href="#">
+<span>سجل المهام الكامل</span>
+<span class="material-symbols-outlined text-[15px]">arrow_back</span>
+</a>
+</div>
+</div>
+</section>
+</div>
+<script>
+  // Simple desktop drag and drop micro-interaction
+  const dropZone = document.getElementById('drop-zone');
+  if (dropZone) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('bg-surface-container');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('bg-surface-container');
+      }, false);
+    });
+  }
+</script></main></div></body></html>

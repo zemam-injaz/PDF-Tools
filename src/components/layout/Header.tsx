@@ -1,43 +1,84 @@
-import { RefreshCw } from 'lucide-react';
+import { CircleHelp, Menu, Search, Settings2, UserRound, X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 
-const PLAN_CONFIG: Record<string, { label: string; initials: string; ring: string; badge: string }> = {
-  lifetime: { label: 'مدى الحياة', initials: '∞', ring: 'ring-yellow-400', badge: 'bg-yellow-100 text-yellow-800' },
-  yearly:   { label: 'سنوي',       initials: 'Y',  ring: 'ring-indigo-500', badge: 'bg-indigo-100 text-indigo-800' },
-  monthly:  { label: 'شهري',       initials: 'M',  ring: 'ring-indigo-400', badge: 'bg-indigo-100 text-indigo-800' },
-  trial:    { label: 'تجريبي',     initials: 'T',  ring: 'ring-emerald-400', badge: 'bg-emerald-100 text-emerald-800' },
-  free:     { label: 'مجاني',      initials: 'F',  ring: 'ring-gray-300',   badge: 'bg-gray-100 text-gray-600' },
+interface HeaderProps {
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  onSearchFocus: () => void;
+  activeTaskCount: number;
+  onOpenTasks: () => void;
+  onOpenSettings: () => void;
+  onToggleNavigation: () => void;
+}
+
+const PLAN_LABELS: Record<string, string> = {
+  lifetime: 'مدى الحياة',
+  yearly: 'سنوي',
+  monthly: 'شهري',
+  trial: 'تجريبي',
+  free: 'مجاني',
 };
 
-export function Header() {
-  const { plan, status, daysRemaining, isLoading } = useSubscription();
-  const cfg = PLAN_CONFIG[plan] ?? PLAN_CONFIG.free;
-  const isExpired = status === 'expired';
+export function Header({
+  searchValue,
+  onSearchChange,
+  onSearchFocus,
+  activeTaskCount,
+  onOpenTasks,
+  onOpenSettings,
+  onToggleNavigation,
+}: HeaderProps) {
+  const { plan, status, isLoading } = useSubscription();
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   return (
-    <header className="h-16 px-8 flex items-center justify-between bg-[var(--bg-app)] z-10 shrink-0">
-      <div className="flex items-center gap-4 text-[var(--text-secondary)]">
-         <span className="text-sm font-medium">
-            {new Date().toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' })}
-         </span>
+    <header className="workspace-topbar">
+      <div className="workspace-brand">
+        <button type="button" className="mobile-nav-button" onClick={onToggleNavigation} title="فتح التنقل"><Menu size={19} /></button>
+        <img className="workspace-logo" src="/warraq-icon.png" alt="" />
+        <strong>مَتن</strong>
+        <span>Matn</span>
       </div>
-      <div className="flex items-center gap-3">
-         <button title="Refresh" className="p-2 rounded-full hover:bg-white transition-colors text-[var(--text-secondary)]">
-           <RefreshCw className="w-5 h-5" />
-         </button>
 
-         {/* Subscription status badge */}
-         {!isLoading && (
-           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isExpired ? 'bg-red-100 text-red-700' : cfg.badge}`}>
-             {isExpired ? 'منتهي' : cfg.label}
-             {plan === 'trial' && daysRemaining !== null ? ` · ${daysRemaining}ي` : ''}
-           </span>
-         )}
+      <div className="global-search">
+        <Search size={17} />
+        <input
+          ref={searchRef}
+          value={searchValue}
+          onFocus={onSearchFocus}
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder="ابحث عن أداة أو ملف أو كتاب..."
+          aria-label="البحث في مَتن"
+        />
+        {searchValue ? (
+          <button type="button" onClick={() => onSearchChange('')} title="مسح البحث"><X size={15} /></button>
+        ) : (
+          <kbd>Ctrl K</kbd>
+        )}
+      </div>
 
-         {/* Avatar */}
-         <div className={`w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs ring-2 ring-white ${!isLoading ? cfg.ring : 'ring-gray-200'} transition-all`}>
-            {isLoading ? '…' : cfg.initials}
-         </div>
+      <div className="topbar-actions">
+        <button type="button" className={`task-count-button ${activeTaskCount > 0 ? 'active' : ''}`} onClick={onOpenTasks}>
+          <i /> {activeTaskCount > 0 ? `${activeTaskCount} مهام جارية` : 'المحرك جاهز'}
+        </button>
+        <button type="button" className="topbar-icon-button" onClick={onOpenSettings} title="الإعدادات"><Settings2 size={18} /></button>
+        <button type="button" className="topbar-icon-button" title="المساعدة"><CircleHelp size={18} /></button>
+        <button type="button" className="plan-avatar" onClick={onOpenSettings} title="الخطة والحساب">
+          <UserRound size={17} />
+          {!isLoading && <span>{status === 'expired' ? 'منتهي' : PLAN_LABELS[plan] || 'مجاني'}</span>}
+        </button>
       </div>
     </header>
   );

@@ -1,10 +1,15 @@
 import { CheckCircle2, Clock, XCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
-import { useTaskManager } from '../../hooks/useTaskManager';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { TaskInfo } from '../../lib/api';
 
-export const TaskMonitor = () => {
-  const { activeTasks, completedTasks } = useTaskManager();
+interface TaskMonitorProps {
+  activeTasks: TaskInfo[];
+  completedTasks: TaskInfo[];
+  onOpenTasks: () => void;
+}
+
+export const TaskMonitor = ({ activeTasks, completedTasks, onOpenTasks }: TaskMonitorProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (activeTasks.length === 0 && completedTasks.length === 0) return null;
@@ -45,6 +50,7 @@ export const TaskMonitor = () => {
             >
               <div className="p-3 border-b bg-gray-50 flex justify-between items-center">
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">سجل المهام</span>
+                <button type="button" className="text-xs font-bold text-indigo-700" onClick={onOpenTasks}>عرض الكل</button>
               </div>
               
               <div className="overflow-y-auto custom-scrollbar flex-1">
@@ -72,7 +78,7 @@ export const TaskMonitor = () => {
   );
 };
 
-const TaskItem = ({ task }: { task: any }) => {
+const TaskItem = ({ task }: { task: TaskInfo }) => {
   const getIcon = () => {
     switch (task.status) {
       case 'running': return <Loader2 className="animate-spin text-indigo-500" size={14} />;

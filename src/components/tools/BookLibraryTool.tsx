@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
-  Search, Star, StarOff, Grid, List, Plus,
+  Search, Star, Grid, List, Plus,
   BookOpen, Trash2, FolderOpen, Edit3,
   Loader2, AlertCircle, CheckCircle2, X, ExternalLink,
-  Copy, Flag, MoreVertical, MessageSquare, StickyNote, PieChart, BarChart3, Eye, Save, BookMarked
+  Copy, Flag, MoreVertical, MessageSquare, StickyNote, PieChart, BarChart3, Eye, Save, BookMarked,
+  Database, LibraryBig
 } from 'lucide-react';
 import { bookLibraryApi, type Book, type AddBooksResult, type Annotation, type BookmarkItem } from '../../api/bookLibraryApi';
 import { InteractivePDFViewer } from '../viewer/InteractivePDFViewer';
@@ -91,35 +92,16 @@ async function getAssetUrl(filePath: string): Promise<string> {
   }
 }
 
-const priorityColors = {
-  High: 'bg-red-100 text-red-700 border-red-200',
-  Medium: 'bg-amber-100 text-amber-700 border-amber-200',
-  Low: 'bg-green-100 text-green-700 border-green-200'
-};
-
 const priorityLabels = {
   High: 'عالية',
   Medium: 'متوسطة', 
   Low: 'منخفضة'
 };
 
-const statusColors = {
-  'To Read': 'bg-slate-100 text-slate-700 border-slate-200',
-  'Reading': 'bg-blue-100 text-blue-700 border-blue-200',
-  'Read': 'bg-green-100 text-green-700 border-green-200'
-};
-
 const statusLabels = {
   'To Read': 'للقراءة',
   'Reading': 'جاري القراءة',
   'Read': 'مكتمل'
-};
-
-const progressColors = (percentage: number) => {
-  if (percentage >= 100) return 'bg-green-500';
-  if (percentage >= 67) return 'bg-blue-500';
-  if (percentage >= 34) return 'bg-amber-500';
-  return 'bg-red-500';
 };
 
 interface ToastMessage {
@@ -148,11 +130,12 @@ export function BookLibraryTool() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'date_added' | 'title' | 'reading_percentage' | 'priority'>('date_added');
   const [filterStarred, setFilterStarred] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [readingFilter, setReadingFilter] = useState<'all' | 'To Read' | 'Reading' | 'Read'>('all');
   const [categories, setCategories] = useState<string[]>([]);
   const [localCategories, setLocalCategories] = useState<string[]>([]); // New categories added during edit
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -342,6 +325,18 @@ export function BookLibraryTool() {
     setContextMenu(prev => ({ ...prev, visible: false }));
   };
 
+  const handlePreviewBook = async (book: Book) => {
+    const url = await getAssetUrl(book.file_path);
+    setPreviewDialog({
+      visible: true,
+      book,
+      assetUrl: url,
+      bookmarks: [],
+      showBookmarks: true,
+      loadingBookmarks: false
+    });
+  };
+
   const handleToggleStar = async (bookId: number, e?: React.MouseEvent) => {
     e?.stopPropagation();
 
@@ -512,9 +507,17 @@ export function BookLibraryTool() {
     }
   };
 
-  const filteredBooks = books.filter(book => 
-    !searchQuery || book.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const filteredBooks = books.filter(book => {
+    const matchesSearch = !normalizedSearch || [book.title, book.file_path, book.category]
+      .some(value => value?.toLowerCase().includes(normalizedSearch));
+    const matchesReadingStatus = readingFilter === 'all' || (book.status || 'To Read') === readingFilter;
+    return matchesSearch && matchesReadingStatus;
+  });
+
+  const readingCount = books.filter(book => (book.status || 'To Read') === 'Reading').length;
+  const completedCount = books.filter(book => book.reading_percentage >= 100 || book.status === 'Read').length;
+  const favoriteCount = books.filter(book => book.is_starred).length;
 
   const formatFileSize = (bytes: number) => {
     const mb = bytes / (1024 * 1024);
@@ -533,7 +536,7 @@ export function BookLibraryTool() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="library-workspace">
       {/* Toast Notification */}
       {toast && (
         <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-fade-in ${
@@ -939,290 +942,166 @@ export function BookLibraryTool() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="mb-6 pr-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">مكتبة الكتب</h2>
-        <p className="text-gray-500">إدارة ومتابعة كتبك وتقدم القراءة • انقر بالزر الأيمن للمزيد من الخيارات</p>
-      </div>
+      <header className="library-heading">
+        <div className="library-heading-icon"><LibraryBig size={22} /></div>
+        <div>
+          <h1>مكتبة الكتب</h1>
+          <p>إدارة كتبك ومتابعة تقدم القراءة، مع حفظ كل البيانات محلياً على جهازك.</p>
+        </div>
+      </header>
 
-      {/* Toolbar */}
-      <div className="card mb-4 p-2 border-b border-gray-100">
-        <div className="flex items-center gap-3 w-full" dir="rtl">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="البحث في المكتبة..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 pl-10 pr-4 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-            />
+      <section className="library-toolbar" aria-label="أدوات المكتبة">
+        <div className="library-toolbar-main">
+          <button type="button" onClick={handleAddBooks} disabled={adding} className="library-add-button">
+            {adding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+            <span>إضافة كتب</span>
+          </button>
+
+          <div className="library-view-switcher" aria-label="طريقة العرض">
+            <button type="button" onClick={() => setViewMode('list')} className={viewMode === 'list' ? 'active' : ''} title="عرض القائمة" aria-label="عرض القائمة">
+              <List size={16} />
+            </button>
+            <button type="button" onClick={() => setViewMode('grid')} className={viewMode === 'grid' ? 'active' : ''} title="عرض الشبكة" aria-label="عرض الشبكة">
+              <Grid size={16} />
+            </button>
           </div>
 
-          {/* Category Filter */}
-          <div className="flex-shrink-0">
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-40 sm:w-48 h-9 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer pr-4 pl-8 py-0 leading-9 text-gray-900"
-            >
-              <option value="all">جميع الفئات</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Sort */}
-          <div className="flex-shrink-0">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="w-40 sm:w-48 h-9 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer pr-4 pl-8 py-0 leading-9 text-gray-900"
-            >
-              <option value="date_added">تاريخ الإضافة</option>
-              <option value="title">العنوان</option>
-              <option value="reading_percentage">التقدم</option>
-              <option value="priority">الأولوية</option>
-            </select>
-          </div>
-
-          <div className="h-8 w-px bg-gray-200 mx-1 hidden sm:block" />
-
-          {/* Starred Filter */}
-          <button
-            onClick={() => setFilterStarred(!filterStarred)}
-            className={`btn ${filterStarred ? 'btn-primary' : 'btn-secondary'} py-1.5 px-3 h-9 text-sm flex-shrink-0`}
-            title="المفضلة"
-          >
+          <button type="button" onClick={() => setFilterStarred(!filterStarred)} className={`library-icon-button ${filterStarred ? 'active favorite' : ''}`} title="عرض المفضلة فقط" aria-pressed={filterStarred}>
             <Star size={16} fill={filterStarred ? 'currentColor' : 'none'} />
           </button>
 
-          {/* View Toggle */}
-          <div className="flex border border-gray-200 rounded-lg overflow-hidden h-9 flex-shrink-0">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`px-3 flex items-center justify-center ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-              title="شبكة"
-            >
-              <Grid size={16} />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-3 flex items-center justify-center ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-              title="قائمة"
-            >
-              <List size={16} />
-            </button>
-          </div>
+          <label className="library-select-field">
+            <span>الترتيب</span>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
+              <option value="date_added">الأحدث إضافة</option>
+              <option value="title">العنوان</option>
+              <option value="reading_percentage">تقدم القراءة</option>
+              <option value="priority">الأولوية</option>
+            </select>
+          </label>
 
-          {/* Add Book */}
-          <button 
-            onClick={handleAddBooks}
-            disabled={adding}
-            className="btn btn-primary py-1.5 px-3 h-9 text-sm whitespace-nowrap flex-shrink-0"
-          >
-            {adding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-            <span className="hidden sm:inline mr-1">إضافة</span>
-          </button>
+          <label className="library-select-field">
+            <span>الفئة</span>
+            <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+              <option value="all">جميع الفئات</option>
+              {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+          </label>
+
+          <label className="library-search-field">
+            <Search size={16} />
+            <input type="search" placeholder="ابحث بالعنوان أو الفئة أو اسم الملف" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            {searchQuery && <button type="button" onClick={() => setSearchQuery('')} title="مسح البحث" aria-label="مسح البحث"><X size={14} /></button>}
+          </label>
         </div>
-      </div>
 
-      {/* Books Display */}
-      <div className="flex-1 overflow-auto">
+        <div className="library-reading-filters" role="tablist" aria-label="حالة القراءة">
+          {([
+            ['all', 'الكل', books.length],
+            ['Reading', 'أقرأ حالياً', readingCount],
+            ['To Read', 'قائمة القراءة', books.filter(book => (book.status || 'To Read') === 'To Read').length],
+            ['Read', 'مكتملة', completedCount]
+          ] as const).map(([value, label, count]) => (
+            <button key={value} type="button" role="tab" aria-selected={readingFilter === value} className={readingFilter === value ? 'active' : ''} onClick={() => setReadingFilter(value)}>
+              {label}<span>{count}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <div className="library-content">
         {loading ? (
-          <div className="card text-center py-12">
-            <Loader2 size={48} className="mx-auto text-indigo-600 animate-spin mb-4" />
-            <p className="text-gray-500">جاري تحميل المكتبة...</p>
+          <div className="library-empty-state">
+            <Loader2 size={34} className="animate-spin" />
+            <p>جاري تحميل المكتبة...</p>
           </div>
         ) : filteredBooks.length === 0 ? (
-          <div className="card text-center py-12">
-            <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500">
-              {books.length === 0 
-                ? 'المكتبة فارغة، أضف كتبك الأولى!' 
-                : 'لا توجد كتب مطابقة للبحث'
-              }
-            </p>
+          <div className="library-empty-state">
+            <BookOpen size={38} />
+            <h2>{books.length === 0 ? 'ابدأ مكتبتك بإضافة أول كتاب' : 'لا توجد نتائج مطابقة'}</h2>
+            <p>{books.length === 0 ? 'اختر ملف PDF أو أكثر، وسيتولى ورّاق تنظيمه.' : 'جرّب تغيير البحث أو مرشح حالة القراءة.'}</p>
             {books.length === 0 && (
-              <button onClick={handleAddBooks} className="btn btn-primary mt-4">
+              <button type="button" onClick={handleAddBooks} className="library-add-button">
                 <Plus size={18} />
                 <span>إضافة كتاب</span>
               </button>
             )}
           </div>
         ) : viewMode === 'grid' ? (
-              /* Grid View - Compact Mode */
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
+          <div className="library-grid">
             {filteredBooks.map(book => (
-              <div 
-                key={book.id} 
-                className="card card-hover group cursor-pointer p-2"
-                onClick={async () => {
-                  const url = await getAssetUrl(book.file_path);
-                  setPreviewDialog({ visible: true, book, assetUrl: url, bookmarks: [], showBookmarks: true, loadingBookmarks: false });
-                }}
+              <article key={book.id} className="library-book-card group" onClick={() => void handlePreviewBook(book)}
                 onContextMenu={(e) => handleContextMenu(e, book)}
               >
-                {/* Thumbnail with overlays */}
-                <div className="relative aspect-[2/3] bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg mb-2 flex items-center justify-center overflow-hidden">
+                <div className="library-book-cover">
                   {book.thumbnail_base64 ? (
-                    <img src={book.thumbnail_base64} alt={book.title} className="object-cover w-full h-full" />
+                    <img src={book.thumbnail_base64} alt="" />
                   ) : (
-                      <BookOpen size={28} className="text-indigo-300" />
+                    <BookOpen size={30} />
                   )}
-
-                  {/* Top row: Star and Options */}
-                  <button
-                    onClick={(e) => handleToggleStar(book.id, e)}
-                    className="absolute top-1.5 left-1.5 p-1.5 rounded-full bg-white shadow-md hover:bg-gray-50 transition-colors"
-                  >
-                    {book.is_starred ? (
-                      <Star size={14} className="text-amber-500" fill="currentColor" />
-                    ) : (
-                        <StarOff size={14} className="text-gray-400" />
-                    )}
-                  </button>
-                  <button
-                    onClick={(e) => handleContextMenu(e, book)}
-                    className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-white shadow-md hover:bg-gray-50 opacity-0 group-hover:opacity-100 transition-all"
-                  >
-                    <MoreVertical size={14} className="text-gray-600" />
-                  </button>
-
-                  {/* Priority button - lower left with dropdown */}
-                  <div className="absolute bottom-2 left-2 group/priority">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Cycle through priorities
-                        const nextPriority = book.priority === 'High' ? 'Medium' : book.priority === 'Medium' ? 'Low' : 'High';
-                        handleSetPriority(book, nextPriority);
-                      }}
-                      className={`p-1.5 rounded-lg shadow-lg backdrop-blur-sm transition-all hover:scale-110 ${book.priority === 'High' ? 'bg-red-500' :
-                          book.priority === 'Medium' ? 'bg-amber-500' : 'bg-green-500'
-                        }`}
-                      title={`الأولوية: ${priorityLabels[book.priority]} (انقر للتغيير)`}
-                    >
-                      <Flag size={16} className="text-white" />
+                  <span className={`library-card-status ${book.status === 'Read' ? 'read' : book.status === 'Reading' ? 'reading' : ''}`}>{statusLabels[book.status || 'To Read']}</span>
+                </div>
+                <div className="library-card-details">
+                  <div className="library-card-title-row">
+                    <h3 title={book.title}>{book.title}</h3>
+                    <button type="button" onClick={(e) => handleToggleStar(book.id, e)} title={book.is_starred ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}>
+                      <Star size={15} fill={book.is_starred ? 'currentColor' : 'none'} className={book.is_starred ? 'is-starred' : ''} />
                     </button>
                   </div>
-
-                  {/* Status button - lower right with dropdown */}
-                  <div className="absolute bottom-2 right-2 group/status">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Cycle through statuses
-                        const nextStatus = book.status === 'To Read' ? 'Reading' : book.status === 'Reading' ? 'Read' : 'To Read';
-                        handleSetStatus(book, nextStatus);
-                      }}
-                      className={`p-1.5 rounded-lg shadow-lg backdrop-blur-sm transition-all hover:scale-110 ${book.status === 'Read' ? 'bg-green-500' :
-                          book.status === 'Reading' ? 'bg-blue-500' : 'bg-slate-500'
-                        }`}
-                      title={`الحالة: ${statusLabels[book.status || 'To Read']} (انقر للتغيير)`}
-                    >
-                      {book.status === 'Read' ? (
-                        <CheckCircle2 size={16} className="text-white" />
-                      ) : book.status === 'Reading' ? (
-                        <BookOpen size={16} className="text-white" />
-                      ) : (
-                        <BookOpen size={16} className="text-white" />
-                      )}
-                    </button>
-                  </div>
+                  <p>{book.category || 'غير مصنف'} · {book.total_pages} صفحة</p>
+                  <div className="library-progress-line"><span style={{ width: `${book.reading_percentage}%` }} /></div>
+                  <div className="library-card-meta"><span>{book.reading_percentage.toFixed(0)}%</span><span>{book.pages_read} / {book.total_pages}</span></div>
                 </div>
-
-                {/* Title */}
-                <h3 className="font-medium text-gray-900 text-xs line-clamp-1 mb-1.5" title={book.title}>{book.title}</h3>
-                
-                {/* Progress bar below title */}
-                <div
-                  className="h-1.5 bg-gray-100 rounded-full overflow-hidden"
-                  title={`${book.reading_percentage.toFixed(0)}% مكتمل`}
-                >
-                  <div
-                    className={`h-full ${progressColors(book.reading_percentage)} transition-all`}
-                    style={{ width: `${book.reading_percentage}%` }}
-                  />
-                </div>
-              </div>
+              </article>
             ))}
           </div>
         ) : (
-          /* List View */
-          <div className="card overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+          <div className="library-table-shell">
+            <table className="library-table">
+              <thead>
                 <tr>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">الكتاب</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">التقدم</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">الأولوية</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">الفئة</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">آخر فتح</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">الحجم</th>
-                        <th className="py-2 px-3"></th>
+                  <th>الكتاب</th>
+                  <th>حالة القراءة</th>
+                  <th>التقدم</th>
+                  <th>الأولوية</th>
+                  <th>آخر نشاط</th>
+                  <th aria-label="الإجراءات"></th>
                 </tr>
               </thead>
               <tbody>
                 {filteredBooks.map(book => (
-                  <tr 
-                    key={book.id} 
-                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer group h-14"
-                    onClick={async () => {
-                      const url = await getAssetUrl(book.file_path);
-                      setPreviewDialog({ visible: true, book, assetUrl: url, bookmarks: [], showBookmarks: true, loadingBookmarks: false });
-                    }}
+                  <tr key={book.id} className="group" onClick={() => void handlePreviewBook(book)}
                     onContextMenu={(e) => handleContextMenu(e, book)}
                   >
-                    <td className="py-2 px-3">
-                      <div className="flex items-center gap-3">
-                        <button onClick={(e) => handleToggleStar(book.id, e)} className="hover:scale-110 transition-transform flex-shrink-0">
-                          {book.is_starred ? (
-                            <Star size={16} className="text-amber-500" fill="currentColor" />
-                          ) : (
-                              <StarOff size={16} className="text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          )}
+                    <td>
+                      <div className="library-book-cell">
+                        <div className="library-row-cover">
+                          {book.thumbnail_base64 ? <img src={book.thumbnail_base64} alt="" /> : <BookOpen size={18} />}
+                        </div>
+                        <div className="library-book-copy">
+                          <strong title={book.title}>{book.title}</strong>
+                          <span><b>{book.category || 'غير مصنف'}</b><span aria-hidden="true">·</span><span dir="ltr">{book.file_path.split(/[/\\]/).pop()}</span></span>
+                        </div>
+                      </div>
+                    </td>
+                    <td><span className={`library-reading-status ${book.status === 'Read' ? 'read' : book.status === 'Reading' ? 'reading' : ''}`}>{statusLabels[book.status || 'To Read']}</span></td>
+                    <td>
+                      <div className="library-row-progress">
+                        <div><span style={{ width: `${book.reading_percentage}%` }} /></div>
+                        <strong>{book.reading_percentage.toFixed(0)}%</strong>
+                        <small>{book.pages_read}/{book.total_pages}</small>
+                      </div>
+                    </td>
+                    <td><span className={`library-priority ${book.priority.toLowerCase()}`}><i />{priorityLabels[book.priority]}</span></td>
+                    <td><span className="library-last-opened">{formatDate(book.last_opened)}<small>{formatFileSize(book.file_size)}</small></span></td>
+                    <td>
+                      <div className="library-row-actions">
+                        <button type="button" onClick={(e) => handleToggleStar(book.id, e)} title={book.is_starred ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'} aria-label={book.is_starred ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}>
+                          <Star size={16} fill={book.is_starred ? 'currentColor' : 'none'} className={book.is_starred ? 'is-starred' : ''} />
                         </button>
-                        <div className="min-w-0">
-                          <span className="font-semibold text-gray-900 text-sm block truncate" title={book.title}>{book.title}</span>
-                          <span className="text-[10px] text-gray-400 block truncate font-mono" dir="ltr">{book.file_path.split('\\').pop()}</span>
-                        </div>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); void handleOpenBook(book); }} title="فتح في قارئ النظام" aria-label="فتح في قارئ النظام"><ExternalLink size={15} /></button>
+                        <button type="button" onClick={(e) => handleContextMenu(e, book)} title="المزيد" aria-label="المزيد"><MoreVertical size={16} /></button>
                       </div>
-                    </td>
-                    <td className="py-2 px-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full ${progressColors(book.reading_percentage)}`}
-                            style={{ width: `${book.reading_percentage}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-gray-600">{book.reading_percentage.toFixed(0)}%</span>
-                      </div>
-                    </td>
-                    <td className="py-2 px-3">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${priorityColors[book.priority]}`}>
-                        {priorityLabels[book.priority]}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusColors[book.status || 'To Read']}`}>
-                        {statusLabels[book.status || 'To Read']}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 text-xs text-gray-600 font-medium">{book.category}</td>
-                    <td className="py-2 px-3 text-xs text-gray-500">{formatDate(book.last_opened)}</td>
-                    <td className="py-2 px-3 text-xs text-gray-500">{formatFileSize(book.file_size)}</td>
-                    <td className="py-2 px-3">
-                      <button 
-                        onClick={(e) => handleContextMenu(e, book)}
-                        className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <MoreVertical size={14} />
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -1539,14 +1418,13 @@ export function BookLibraryTool() {
         </div>
       )}
 
-      {/* Stats Footer */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <div className="flex items-center gap-6 text-sm text-gray-500">
-          <span>إجمالي الكتب: <strong className="text-gray-900">{books.length}</strong></span>
-          <span>المفضلة: <strong className="text-gray-900">{books.filter(b => b.is_starred).length}</strong></span>
-          <span>مكتملة: <strong className="text-gray-900">{books.filter(b => b.reading_percentage === 100).length}</strong></span>
-        </div>
-      </div>
+      <footer className="library-status-bar">
+        <div><span>إجمالي الكتب</span><strong>{books.length}</strong></div>
+        <div><span>أقرأ حالياً</span><strong>{readingCount}</strong></div>
+        <div><span>المفضلة</span><strong>{favoriteCount}</strong></div>
+        <div><span>مكتملة</span><strong>{completedCount}</strong></div>
+        <div className="library-local-status"><Database size={14} /><span>قاعدة البيانات المحلية</span><i /><strong>متصلة</strong></div>
+      </footer>
     </div>
   );
 }

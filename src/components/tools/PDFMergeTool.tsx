@@ -4,9 +4,13 @@ import { getDefaultOutputPath, openPath } from '../../lib/utils';
 import { Files, ArrowRight, CheckCircle, AlertCircle, FolderOpen } from 'lucide-react';
 import { MultiFileInput, FileInput } from '../ui/FileInput';
 
-export const PDFMergeTool: React.FC = () => {
-  const [files, setFiles] = useState<string[]>([]);
-  const [outputPath, setOutputPath] = useState('');
+interface PDFMergeToolProps {
+  initialFiles?: string[];
+}
+
+export const PDFMergeTool: React.FC<PDFMergeToolProps> = ({ initialFiles = [] }) => {
+  const [files, setFiles] = useState<string[]>(initialFiles);
+  const [outputPath, setOutputPath] = useState(() => initialFiles[0] ? getDefaultOutputPath(initialFiles[0], '_merged') : '');
   const [customFilename, setCustomFilename] = useState('');
   const [lastOutputFolder, setLastOutputFolder] = useState('');
 

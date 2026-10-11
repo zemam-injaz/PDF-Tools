@@ -5,9 +5,16 @@ import { FileInput } from '../ui/FileInput';
 import { openPath } from '../../lib/utils';
 
 
-export const TextExtractTool: React.FC = () => {
-  const [inputPath, setInputPath] = useState('');
-  const [outputDir, setOutputDir] = useState('');
+interface TextExtractToolProps {
+  initialPath?: string;
+}
+
+export const TextExtractTool: React.FC<TextExtractToolProps> = ({ initialPath = '' }) => {
+  const [inputPath, setInputPath] = useState(initialPath);
+  const [outputDir, setOutputDir] = useState(() => {
+    const lastSep = Math.max(initialPath.lastIndexOf('/'), initialPath.lastIndexOf('\\'));
+    return lastSep > 0 ? initialPath.substring(0, lastSep) : '';
+  });
   const [pageRange, setPageRange] = useState('');
 
   // Auto-set output directory based on input file

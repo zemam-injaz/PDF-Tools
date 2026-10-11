@@ -2,6 +2,23 @@
 import os
 import sys
 from typing import List, Optional, Dict, Any
+
+
+def _ensure_background_logging():
+    """Provide a log stream when running as a windowless PyInstaller app."""
+    if sys.stdout is not None and sys.stderr is not None:
+        return
+    log_dir = os.environ.get("TEMP") or os.environ.get("TMP") or os.getcwd()
+    log_path = os.path.join(log_dir, "warraq_backend.log")
+    stream = open(log_path, "a", encoding="utf-8", buffering=1)
+    if sys.stdout is None:
+        sys.stdout = stream
+    if sys.stderr is None:
+        sys.stderr = stream
+
+
+_ensure_background_logging()
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -1011,6 +1028,24 @@ def add_books(request: AddBooksRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/books/categories/list")
+def get_categories():
+    """Get all unique categories"""
+    try:
+        categories = BookLibraryService.get_categories()
+        return {"status": "success", "data": {"categories": categories}}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/books/search/{query}")
+def search_books(query: str):
+    """Search books by title"""
+    try:
+        books = BookLibraryService.search_books(query)
+        return {"status": "success", "data": {"books": books}}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/books/{book_id}")
 def get_book(book_id: int):
     """Get a single book by ID"""
@@ -1068,27 +1103,6 @@ def delete_book(book_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/books/categories/list")
-def get_categories():
-    """Get all unique categories"""
-    try:
-        categories = BookLibraryService.get_categories()
-        return {"status": "success", "data": {"categories": categories}}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/books/search/{query}")
-def search_books(query: str):
-    """Search books by title"""
-    try:
-        books = BookLibraryService.search_books(query)
-        return {"status": "success", "data": {"books": books}}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-
 
 @app.post("/api/system/reveal-file")
 def system_reveal_file(request: AddBookRequest):

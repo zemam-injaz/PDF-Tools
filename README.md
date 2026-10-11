@@ -1,6 +1,6 @@
-# Warraq (وراق) — PDF Tools Suite
+# Matn (مَتن) — Smart PDF Workspace
 
-**Warraq** is a professional-grade, bilingual (Arabic-first) PDF manipulation desktop application. It provides a comprehensive toolkit for merging, splitting, compressing, extracting, securing, watermarking, annotating, and managing PDF files — with a focus on Arabic-language usability and reading productivity tools.
+**Matn** is a professional-grade, bilingual (Arabic-first) PDF workspace by **Zemam Apps**. It provides tools for merging, splitting, extracting, indexing, organizing, reading, and converting documents — including Markdown to PDF with Arabic and RTL support.
 
 Built with **Tauri + React + TypeScript** on the frontend and a **Python FastAPI** backend powered by **PyMuPDF**, Warraq runs as a native desktop app with a polished RTL-friendly interface.
 

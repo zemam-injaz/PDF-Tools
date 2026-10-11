@@ -4,9 +4,13 @@ import { Minimize2, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { FileInput } from '../ui/FileInput';
 import { getDefaultOutputPath } from '../../lib/utils';
 
-export const PDFCompressTool: React.FC = () => {
-  const [inputPath, setInputPath] = useState('');
-  const [outputPath, setOutputPath] = useState('');
+interface PDFCompressToolProps {
+  initialPath?: string;
+}
+
+export const PDFCompressTool: React.FC<PDFCompressToolProps> = ({ initialPath = '' }) => {
+  const [inputPath, setInputPath] = useState(initialPath);
+  const [outputPath, setOutputPath] = useState(() => initialPath ? getDefaultOutputPath(initialPath, '_compressed') : '');
 
   // Auto-set output path based on input file
   const handleInputChange = (path: string) => {

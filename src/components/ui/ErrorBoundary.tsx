@@ -69,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 عذراً، حدث خطأ غير متوقع
               </h1>
               <p className="text-slate-400 text-sm md:text-base leading-relaxed max-w-lg mb-8">
-                واجه وراق مشكلة أثناء تشغيل هذه الصفحة. يمكنك محاولة إعادة تحميل التطبيق لاستعادة الجلسة ومتابعة عملك.
+                واجه مَتن مشكلة أثناء تشغيل هذه الصفحة. يمكنك محاولة إعادة تحميل التطبيق لاستعادة الجلسة ومتابعة عملك.
               </p>
 
               {/* Action Buttons */}
