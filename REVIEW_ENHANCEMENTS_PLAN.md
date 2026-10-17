@@ -1,157 +1,226 @@
-# Reader and Comments Enhancement Plan
+# خطة تحسين القارئ والتعليقات
 
-## Objective
+## الهدف
 
-Make Matn's PDF reader comfortable for long-form reading and make comments easy to anchor to, find, revisit, and export. Retain the existing React/PDF.js frontend and PyMuPDF/FastAPI backend. PdfCraft is a reference for reader workflows and modular architecture, not a runtime dependency.
+جعل قارئ PDF في مَتن مريحًا للقراءة الطويلة، وجعل التعليقات سهلة الربط بمقاطعها والعثور عليها ومراجعتها وتصديرها. مع الإبقاء على واجهة React/PDF.js القائمة وخادم PyMuPDF/FastAPI. PdfCraft مرجع لسير عمل القارئ والمعمارية المعيارية، لا اعتماد زمن تشغيل.
 
-## Guiding requirements
+## المتطلبات الموجِّهة
 
-- Arabic-first RTL experience with correct selection and reading order for Arabic and mixed-script documents.
-- Fast rendering for long PDFs; never require all pages to be mounted simultaneously.
-- Text selection and copying work in reading mode.
-- Annotation tools capture pointer input only while active.
-- Existing Matn notes remain readable and editable.
-- Native PDF annotations and Matn database annotations remain distinguishable.
-- New persistence is backward compatible and robust to zoom/layout changes.
-- Export preserves portable annotations where supported and makes flattening an explicit choice.
+- تجربة عربية أولى مع اتجاه RTL وترتيب تحديد وقراءة صحيح للعربية والمستندات المختلطة.
+- عرض سريع للملفات الطويلة؛ وعدم اشتراط تركيب كل الصفحات معًا.
+- عمل تحديد النص ونسخه في وضع القراءة.
+- التقاط أدوات التعليق لمؤشّر الإدخال فقط أثناء تفعيلها.
+- بقاء ملاحظات مَتن القائمة قابلة للقراءة والتحرير.
+- بقاء تعليقات PDF الأصلية وتعليقات قاعدة بيانات مَتن متمايزة.
+- تخزين جديد متوافق مع الإصدارات السابقة ومقاوم لتغيّر التقريب/التخطيط.
+- التصدير يحفظ التعليقات المحمولة حيث أمكن، ويجعل التسوية خيارًا صريحًا.
 
-## Phase 0 — Baseline and implementation map
+## خريطة مستهدَفة للتنفيذ (من فحص الكود)
 
-**Scope**
+| المجال | الحالة | الملف |
+| --- | --- | --- |
+| تركيب كل الصفحات | `Array.from(new Array(numPages))` دون افتراضية | `InteractivePDFViewer.tsx:355-366` |
+| الحجم | تمرير `width=800` و`scale` معًا | `PDFPageRenderer.tsx:29,39-47` |
+| التقاط المدخلات | SVG دائمًا `pointer-events-auto` + مستطيل غطاء | `AnnotationOverlay.tsx:42-52` |
+| الإحداثيات | معيارية 0–1 (مستقلة عن التقريب) | `AnnotationOverlay.tsx:34-39`، `models/annotation.py:11-12` |
+| العامل | تحميل من unpkg CDN | `InteractivePDFViewer.tsx:12` |
+| نوع التعليق | اتحاد محصور في الواجهة | `annotationApi.ts:15` |
+| التخزين | جدول SQLite لكل `book_id` | `annotation_service.py:23-34` |
+| الهوية | `book_id` في القارئ مقابل `file_path` في الماسح | `BookLibraryTool.tsx:1338-1345`، `CommentsTool.tsx:226-261` |
+| التصدير | الحرق الحالي ينشئ تعليقات أصلية لا محتوى مسطّحًا | `annotation_modifier_service.py:50-89` |
+| الفواصل المرجعية | استخراج هرمي متاح | `server.py:634`، `bookmark_service.py:22-74` |
 
-- Read repository instructions and inspect the current UI-to-API-to-database flow.
-- Confirm current `react-pdf` and PDF.js APIs/dependency versions before selecting rendering or text-selection techniques.
-- Identify the existing book identity, progress storage, bookmark extraction, export operations, and any annotation database migration conventions.
-- Keep unrelated working-tree changes intact.
+## قرارات عابرة للمراحل (تُنفَّذ أولًا)
 
-**Exit criteria**
+- **D1 — عقد الإحداثيات:** `x, y, w, h` معيارية في `[0,1]`، أصل أعلى-يسار؛ مستطيلات المقاطع في `data.rects`.
+- **D2 — نموذج البيانات:** توسعة إضافية فقط؛ الحقول الجديدة داخل `data`؛ لا تغيير لمعاني الأعمدة القائمة.
+- **D3 — هوية المستند:** `book_id` ثم البصمة ثم المسار المُطبَّع؛ لا الاعتماد على اسم الملف.
+- **D4 — عقد المدخلات:** الجذر `pointer-events: none` عند عدم تفعيل أداة، مع إبقاء عناصر التعليقات فرعية قابلة للنقر.
+- **D5 — التشخيص:** استبدال `alert()`/`confirm()` بإشعارات داخل المكوّن وإزالة سجلات الطرفية.
+- **D6 — العامل:** تضمين محلي مع CDN بديلًا موثّقًا.
+- **D7 — نطاق:** لا استبدال لحزمة العرض، ولا اعتماد PdfCraft زمن تشغيل، ولا إعادة هيكلة غير مرتبطة.
 
-- The implementation map and compatibility risks are understood before modifying data or viewer behavior.
+---
 
-## Phase 1 — Reader foundation and interaction correctness
+## المرحلة 0 — خط الأساس وخريطة التنفيذ
 
-**Primary files**
+**النطاق**
+
+- قراءة تعليمات المستودع وفحص تدفّق الواجهة ← API ← قاعدة البيانات.
+- تأكيد إصدارات `react-pdf` وPDF.js الحالية قبل اختيار تقنيات العرض/التحديد.
+- تحديد هوية الكتاب الحالية وتخزين التقدّم واستخراج الفواصل والتصدير واصطلاحات ترحيل التعليقات.
+- الحفاظ على تغييرات شجرة العمل غير المرتبطة.
+
+**معايير الخروج**
+
+- خريطة التنفيذ ومخاطر التوافق مفهومة قبل تعديل البيانات أو سلوك القارئ.
+
+---
+
+## المرحلة 1 — أساس القارئ وصحة التفاعل
+
+**الملفات الأساسية**
 
 - `src/components/viewer/InteractivePDFViewer.tsx`
 - `src/components/viewer/PDFPageRenderer.tsx`
 - `src/components/viewer/AnnotationOverlay.tsx`
-- Relevant toolbar and reader state/storage modules.
+- وحدات الحالة/التخزين وشريط الأدوات ذات الصلة.
 
-**Scope**
+**النطاق**
 
-- Render only visible pages and a small neighborhood around them; select a virtualization approach compatible with `react-pdf`.
-- Add page count/current page display and direct page-number navigation.
-- Add fit-width and fit-page controls alongside zoom.
-- Support continuous, single-page, and two-page layouts.
-- Preserve the current reading location through zoom and layout changes, accounting for pages of different sizes.
-- Persist last-read page and useful reader preferences per book using existing storage conventions.
-- Make annotation SVG overlays ignore pointer events when no annotation tool is active; keep text, link, and native annotation layers usable.
-- Keep the canvas, text layer, PDF annotation layer, and Matn overlays aligned at all zoom levels.
+- حلّ تعارض `width` مقابل `scale` ليكون للحجم مصدر واحد، بحيث تتشارك الحاوية واللوحة وطبقة النص والطبقة الأصلية وطبقات مَتن الهندسة ذاتها.
+- عرض الصفحات المرئية فقط مع نافذة ±صفحتين (افتراضية نافذية متوافقة مع `react-pdf`)، واستبدال تركيب كل الصفحات.
+- تخطيطات: مستمر (عمودي)، صفحة واحدة (مرفوفة)، صفحتان (فردية).
+- التقريب مع أزرار ملاءمة العرض وملاءمة الصفحة، مع اشتقاق مقياس واحد من مقاس الصفحة الأولى ومقاس الحاوية عبر `ResizeObserver`.
+- الحفاظ على موضع القراءة عبر تغيير التقريب/التخطيط عبر تثبيت على الصفحة الأولى/الأخيرة المرئية وإزاحتها.
+- عرض رقم الصفحة الحالية/الإجمالي والتنقّل المباشر إلى رقم صفحة.
+- حفظ آخر صفحة وتفضيلات القارئ لكل كتاب عبر `src/lib/appStorage.ts` بمفتاح `reader_prefs_<bookId>`.
+- جعل طبقة SVG التعليقات تتجاهل أحداث المؤشر عند عدم تفعيل أداة، مع بقاء طبقات النص والروابط والتعليقات الأصلية قابلة للاستخدام.
 
-**Acceptance criteria**
+**معايير القبول**
 
-- A long document does not mount every page at once.
-- Page jump, scrolling, zoom, and layout changes do not unexpectedly lose the reader's place.
-- Text selection and copy work in reading mode.
-- Explicitly activated annotation tools still place annotations accurately.
+- مستند طويل لا يركّب كل الصفحات دفعة واحدة (تحقَّق بعدد عقد `<Page>` المركّبة).
+- التنقّل والتقريب وتغيير التخطيط لا يفقد القارئ موضعه.
+- تحديد النص والنسخ يعملان في وضع القراءة.
+- الأدوات المفعّلة صراحةً تضع التعليقات بدقة.
+- المحاذاة صحيحة عند 50% و120% و200% وفي تخطيط الصفحتين.
 
-## Phase 2 — Navigation and reading controls
+---
 
-**Primary files**
+## المرحلة 2 — الملاحة وأدوات القراءة
+
+**الملفات الأساسية**
 
 - `src/components/viewer/InteractivePDFViewer.tsx`
-- Existing bookmark API/service and appropriate viewer sidebar components.
+- واجهة/خدمة الفواصل المرجعية القائمة ومكوّنات الشريط الجانبي المناسبة.
 
-**Scope**
+**النطاق**
 
-- Add a collapsible navigation sidebar with page thumbnails and the PDF's hierarchical bookmarks.
-- Reuse current bookmark extraction where suitable; handle documents without bookmarks gracefully.
-- Synchronize current visible page with selected thumbnail/bookmark state.
-- Navigate to the destination page when the user selects a thumbnail or bookmark.
-- Add keyboard navigation and shortcuts consistent with existing app conventions.
-- Ensure RTL direction, Arabic labels, focus order, and compact window layouts work.
+- شريط جانبي قابل للطيّ فيه تبويبان: المصغّرات وفهرس المستند.
+- مصغّرات تُعاد استخدام `Page` بمقياس مصغّر وتُركَّب نافذيًا للصفحات المرئية فقط، مع إبراز الصفحة الحالية.
+- استخدام `bookLibraryApi.extractBookmarks(filePath)` للفهرس مع الحفاظ على الهرمية (`level`) وحالة فراغ واضحة.
+- الانتقال إلى الصفحة عند اختيار مصغّرة أو فاصل مرجعي.
+- مزامنة الصفحة الحالية مع التمرير دون حلقات تغذية راجعة.
+- عمل الملاحة حتى عند غياب الفهرس.
+- ضمان اتجاه RTL والوسوم العربية وترتيب التركيز والنوافذ الضيقة.
 
-**Acceptance criteria**
+**معايير القبول**
 
-- A reader can navigate a long PDF by page or bookmark without leaving the viewer.
-- Thumbnail/bookmark selection and scroll position remain synchronized.
-- PDFs without an outline still have usable thumbnail and page-number navigation.
+- يستطيع القارئ ملاحة ملف طويل عبر الصفحات أو الفهرس داخل القارئ.
+- اختيار المصغّرة/الفاصل وموضع التمرير يبقيان متزامنَين.
+- الملفات بلا فهرس لديها ملاحة مصغّرات/أرقام صفحات مفيدة.
+- تُعرض الفواصل المتداخلة بالمستويات الصحيحة.
 
-## Phase 3 — Passage-based annotation workflow
+---
 
-**Primary files**
+## المرحلة 3 — سير التعليق المرتبط بالمقاطع
+
+**الملفات الأساسية**
 
 - `src/components/viewer/InteractivePDFViewer.tsx`
 - `src/components/viewer/AnnotationOverlay.tsx`
 - `src/components/viewer/toolbar/AnnotationToolbar.tsx`
-- `src/components/tools/CommentsTool.tsx` where integration is appropriate.
+- `src/components/tools/CommentsTool.tsx` حيث تلزم التكامل.
 - `src/api/annotationApi.ts`
 - `python-server/models/annotation.py`
 - `python-server/services/annotation_service.py`
-- Relevant API routes in `python-server/server.py`.
+- مسارات API ذات الصلة في `python-server/server.py`.
 
-**Scope**
+**النطاق**
 
-- Let the user select PDF text and create a highlight, underline, or note attached to that selection.
-- Capture all line rectangles for multi-line selections rather than approximating a selection with a single point.
-- Add a comments panel scoped to the open document with page, quote, comment text, and status.
-- Selecting a comment navigates to and emphasizes the corresponding passage.
-- Add reply and resolved-state support if it fits the existing schema cleanly.
-- Distinguish Matn database notes from annotations extracted from the PDF itself; do not silently merge duplicates.
-- Retain existing text, dot, and timestamp annotation behavior.
+- تمكين المستخدم من تحديد نص PDF وإنشاء تظليل أو تسطير أو ملاحظة مرتبطة بالتحديد.
+- التقاط جميع مستطيلات الأسطر للتحديد متعدد الأسطر بدلًا من تقريبه بنقطة واحدة.
+- لوحة تعليقات مقصورة على المستند المفتوح فيها الصفحة والاقتباس ونص التعليق والحالة.
+- اختيار تعليق ينقل إلى مقطعه ويبرزه مؤقتًا.
+- فصل واضح في اللوحة بين **ملاحظات مَتن** (قابلة للتحرير والرد والحل) و**تعليقات PDF الأصلية** (للقراءة فقط، بوسم مميّز).
+- إضافة دعم الرد وحالة «تم الحل» داخل `data` (`parent_id`, `resolved`) وفلترة الحالة.
+- الحفاظ على سلوك تعليقات النص والنقطة والطابع الزمني القائمة، وعلى تدفّق التراجع/الإعادة.
 
-**Acceptance criteria**
+**معايير القبول**
 
-- A comment is visually attached to its passage and is discoverable from the comments panel.
-- Selecting a comment returns the reader to the right page and selection area.
-- Existing stored annotations and imported native PDF annotations remain visible through their respective workflows.
+- التعليق مرتبط بمقطعه بصريًا وقابل للاكتشاف من اللوحة والعودة إليه بعد إعادة التحميل.
+- تعليقات مَتن المحفوظة وتعليقات PDF المستوردة تبقى ظاهرة عبر سير عملها.
+- لا يُدمج أو يُهمَل مصدر دون قصد؛ التعليقات الأصلية وملاحظات مَتن مميّزة بوضوح.
+- الرد والحل ينتقلان عبر API ويصمدان بعد إعادة التحميل.
 
-## Phase 4 — Stable anchoring and data compatibility
+---
 
-**Scope**
+## المرحلة 4 — التثبيت المستقر والتوافق
 
-- For passage annotations, persist page number, selected quote, nearby text context, and page-space geometry.
-- Store coordinates in a PDF-space or otherwise zoom-independent representation; never store only screen pixels.
-- Tie annotations to the app's stable document identity; avoid filename-only association where a stronger identity exists.
-- Define migration/default behavior for old records that contain only page and normalized x/y.
-- Handle changed, moved, or missing source files without crashing or silently discarding annotations.
-- Ensure undo/redo and optimistic saves remain consistent with the backend.
+**النطاق**
 
-**Acceptance criteria**
+- للتعليقات المقطعيّة: تخزين رقم الصفحة والاقتباس المحدَّد والسياق النصي المجاور وهندسة فضاء الصفحة.
+- تخزين الإحداثيات بتمثيل مستقل عن التقريب أو حجم النافذة؛ لا تُخزَّن بكسل شاشة فقط.
+- ربط التعليقات بهوية المستند المستقرة (D3)؛ تجنّب الربط باسم الملف حيث توجد هوية أقوى.
+- تعريف سلوك الترحيل/البديل للسجلات القديمة التي تحتوي فقط على الصفحة و`x/y` المعيارية.
+- معالجة الملفات المتغيّرة/المنقولة/المفقودة دون تعطّل أو حذف صامت للتعليقات.
+- ضمان اتساق التراجع/الإعادة والحفظ التفاؤلي مع الخادم.
 
-- Existing records load without destructive migration.
-- New passage anchors remain aligned after zoom and layout changes.
-- Failed saves, edits, deletes, and reloads leave the UI and database in a consistent state.
+**معايير القبول**
 
-## Phase 5 — Export and reader polish
+- السجلات القديمة تُحمَّل دون ترحيل مدمّر.
+- المراسي الجديدة تبقى محاذية بعد تغيير التقريب والتخطيط.
+- التنقل بين الصفحات يعمل بعد التصدير.
+- فشل الحفظ/التحرير/الحذف/إعادة التحميل يبقي الواجهة وقاعدة البيانات متسقتين.
+- الملف المفقود/المتغيّر لا يعطّل القارئ ويعرض حالة قابلة للاسترداد.
 
-**Scope**
+---
 
-- Export passage highlights/notes as PDF-native annotation objects where PyMuPDF supports the required type and appearance.
-- Preserve a deliberate flattened/burned export option; clearly label the difference.
-- Ensure generated annotations can be extracted/reopened in common PDF readers.
-- Add useful loading, empty, missing-file, and save/export error states.
-- Replace blocking alerts with the app's established inline/toast/dialog patterns where practical.
-- Review Arabic text selection, mixed RTL/LTR order, keyboard-only navigation, focus, and small-window behavior.
-- Remove temporary diagnostic logging added during implementation.
+## المرحلة 5 — التصدير وتنقيح القارئ
 
-**Acceptance criteria**
+**النطاق**
 
-- An exported annotated copy can be reopened and its annotations remain selectable/editable where supported.
-- Flattened export remains available as a separate intentional output.
-- Common failures provide an understandable recovery path.
+- فصل التصدير إلى عمليتين مسمّاتين بوضوح:
+  - **تصدير نسخة معلّقة** (افتراضي): إضافة عناصر تعليق PDF أصلية (تظليل/تسطير/نص حر) لتعليقات مَتن.
+  - **تسوية/حرق** (ثانوي، موسوم بوضوح): التسوية إلى محتوى الصفحة لمن يحتاجها.
+- الحفاظ على سلوك `/api/annotations/burn` القائم خلف راية/نمط بدلًا من كسر العقد.
+- إضافة حالات فراغ/تحميل/خطأ/فشل حفظ مفيدة.
+- استبدال التنبيهات الحاجبة بنمط الإشعارات الداخلي حيث أمكن (D5).
+- مراجعة تحديد النص العربي وترتيب RTL/LTR والتنقّل بلوحة المفاتيح والتركيز والنوافذ الضيقة.
+- إزالة السجلات التشخيصية المؤقتة.
 
-## Cross-phase risks and mitigations
+**معايير القبول**
 
-| Risk | Mitigation |
+- نسخة PDF معلّقة تُفتح في قارئ قياسي وتعليقاتها سليمة و/أو قابلة للتحرير حيث يُدعَم.
+- التصدير المسطّح يبقى متاحًا كمخرَج منفصل مقصود.
+- الأعطال الشائعة توفّر مسار استرداد مفهومًا.
+- لا تبقى حوارات حاجبة في مسار القارئ.
+
+---
+
+## مخاطر عابرة للمراحل وتدابيرها
+
+| الخطر | التدبير |
 | --- | --- |
-| Virtualization changes scroll behavior | Preserve a page-relative scroll anchor when pages mount/unmount and zoom changes. |
-| Text layer and overlays drift | Derive geometry from PDF.js viewport transforms and test at varied zoom and page sizes. |
-| Arabic selection order differs from visual order | Preserve the selected quote from PDF.js text content, inspect mixed-script selections, and avoid assuming DOM order equals reading order. |
-| Legacy notes are lost during model changes | Keep legacy fields readable and make any migration additive and reversible where practical. |
-| Native PDF annotations duplicate app notes | Keep source/type identifiers explicit and require deliberate import/export behavior. |
-| Large PDF causes memory spikes | Render visible pages and a bounded neighbor window; release canvases when pages leave the window. |
+| الافتراضية تغيّر سلوك التمرير | الحفاظ على مرساة تمرير نسبية للصفحة عند تركيب/إزالة الصفحات وعند التقريب. |
+| انحراف طبقة النص والطبقات | اشتقاق الهندسة من تحويلات منفذ PDF.js واختبارها عند تقريبات وأحجام صفحات متنوّعة. |
+| ترتيب التحديد العربي يختلف عن الترتيب البصري | حفظ الاقتباس من محتوى نص PDF.js وفحص التحديدات المختلطة وتجنّب افتراض أن ترتيب DOM يساوي ترتيب القراءة. |
+| تضارب `width` و`scale` | مصدر حجم واحد (D1/D4) والتحقق خارجيًا قبل الافتراضية. |
+| ضياع الملاحظات القديمة | إبقاء الحقول القديمة مقروءة والترحيل إضافي وقابل للعكس حيث أمكن. |
+| ازدواج تعليقات PDF الأصلية وملاحظات مَتن | إبقاء معرّفات المصدر/النوع صريحة واشتراط سلوك استيراد/تصدير متعمّد. |
+| تعذّر العامل دون اتصال | تضمين العامل محليًا (D6). |
+| ارتفاع استهلاك الذاكرة في الملفات الكبيرة | عرض الصفحات المرئية ونافذة مجاورة محدودة وتحرير اللوحات عند خروج الصفحات. |
 
-## Completion report
+---
 
-When implementation is complete, summarize completed phases, key files, compatibility/migration behavior, known limitations, and validation performed. Update [STATUS.md](STATUS.md), [BACKLOG.md](BACKLOG.md), and [DECISIONS.md](DECISIONS.md) if the result changes project state or architecture.
+## حالة التنفيذ (2026-10-11)
+
+نُفّذت المراحل 1–5 في الكود دون إيداع. الملخص:
+
+| المرحلة | الحالة | ملاحظات |
+| --- | --- | --- |
+| 1 — أساس القارئ | منفّذة | افتراضية ±2، تخطيطات ثلاثة، ملاءمة العرض/الصفحة، انتقال مباشر، حفظ تفضيلات، إصلاح التقاط المؤشر |
+| 2 — الملاحة | منفّذة | شريط جانبي بمصغّرات (±8) وفهرس هرمي، مزامنة تمرير، بديل بلا فهرس |
+| 3 — تعليقات المقاطع | منفّذة | تظليل/تسطير/ملاحظة، لوحة تفصل مَتن عن الأصلي، تركيز/إبراز، رد وحل |
+| 4 — التثبيت والتوافق | منفّذة جزئيًا | تخزين المقاطع متوافق؛ **بصمة هوية المستند (D3) متبقية** |
+| 5 — التصدير والتنقيح | منفّذة | وضعا `native`/`flatten`، إشعارات بدل التنبيهات، إزالة سجلات القارئ |
+
+**تحقق:** نجح `tsc --noEmit` لملفات الواجهة و`py_compile` لملفات الخادم المعدّلة. لم تُشغَّل اختبارات آلية ولم يُختبر السلوك يدويًا.
+
+**متبقٍ:** بصمة الهوية (D3)، التحقق اليدوي من ترتيب تحديد النص العربي المختلط، مشاركة هندسة التعليقات الأصلية لإبرازها في الصفحة، تحسين مصغّرات الشريط الجانبي. راجع [STATUS.md](STATUS.md) للقائمة الكاملة.
+
+**مراجعة وتحسين (2026-10-11):** بعد التنفيذ الأول أُضيفت اختصارات لوحة المفاتيح، وأُصلح استعادة الموضع الأولي، وخُفّض إعادة الرسم عبر `React.memo`/`useCallback`، وأُضيف شريط تحذير غير حاجب للمصدر المفقود، والملاحة من التعليقات الأصلية، وتحسين أداء المصغّرات.
+
+## تقرير الإكمال
+
+عند اكتمال التنفيذ، لخّص المراحل المنجزة والملفات الأساسية وسلوك التوافق/الترحيل والقيود المعروفة والتحقق المُجرى. حدِّث [STATUS.md](STATUS.md) و[BACKLOG.md](BACKLOG.md) و[DECISIONS.md](DECISIONS.md) إذا غيّرت النتيجة حالة المشروع أو المعمارية.

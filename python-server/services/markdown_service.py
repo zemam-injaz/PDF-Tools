@@ -63,7 +63,7 @@ atexit.register(_shutdown_browsers)
 HIGHLIGHT_RE = re.compile(r'==([^=]+)==')
 HTML_TAGS_RE = re.compile(r'<[^>]+>')
 HEADING_RE = re.compile(r'<(h[1-6])>(.*?)</\1>', flags=re.S)
-CHAPTER_SPLIT_RE = re.compile(r'\n\s*-{3,}\s*\n')
+SOURCE_FILE_BOUNDARY = '<!-- MATN_SOURCE_FILE_BOUNDARY -->'
 MARKER_PATTERN = re.compile(r'BMK_[A-Z0-9_]+')
 TOC_ENTRY_RE = re.compile(r'^(#{1,4})\s+(.+)$')
 
@@ -742,7 +742,7 @@ class MarkdownService:
         if kind == 'header':
             align = opts.get('header_align', 'center')
             color = opts.get('header_color', '#4b5563')
-            text = opts.get('header_text', '')
+            text = html.escape(str(opts.get('header_text', '') or ''))
             if not text:
                 return '<div></div>'
             font_size = max(7, int(opts.get('body_size', 12) * 0.65))
@@ -754,7 +754,7 @@ class MarkdownService:
             align = opts.get('footer_align', 'center')
             color = opts.get('footer_color', '#6b7280')
             pn_color = opts.get('page_number_color', '#6b7280')
-            text = opts.get('footer_text', '')
+            text = html.escape(str(opts.get('footer_text', '') or ''))
             page_numbers = opts.get('footer_page_numbers', True)
             font_size = max(7, int(opts.get('body_size', 12) * 0.6))
 
@@ -805,8 +805,40 @@ class MarkdownService:
         opts['body_size'] = int(opts.get('body_size', 12))
         opts['line_height'] = float(opts.get('line_height', 2.0))
 
+        if opts.get('page_size') not in PAGE_SIZES:
+            raise ValueError(f"Unsupported page size: {opts.get('page_size')}")
+        if opts.get('direction') not in ('rtl', 'ltr'):
+            raise ValueError('Direction must be either rtl or ltr.')
+        for key in ('margin_top', 'margin_bottom', 'margin_left', 'margin_right'):
+            if not 0 <= opts[key] <= 60:
+                raise ValueError(f'{key} must be between 0 and 60 mm.')
+        if not 8 <= opts['body_size'] <= 30:
+            raise ValueError('body_size must be between 8 and 30 pt.')
+        if not 1 <= opts['line_height'] <= 3.5:
+            raise ValueError('line_height must be between 1 and 3.5.')
+        for key in ('header_align', 'footer_align'):
+            if opts.get(key) not in ('left', 'center', 'right'):
+                raise ValueError(f'{key} must be left, center, or right.')
+        if opts.get('cover_bg_type') not in ('white', 'solid', 'gradient'):
+            raise ValueError('cover_bg_type must be white, solid, or gradient.')
+
+        color_keys = (
+            'primary_color', 'text_color', 'link_color', 'accent_color',
+            'code_background', 'code_text', 'blockquote_border',
+            'blockquote_background', 'highlight_color', 'header_color',
+            'footer_color', 'page_number_color', 'toc_color', 'cover_bg_color',
+            'cover_gradient_from', 'cover_gradient_to', 'cover_accent_color',
+            'cover_text_color',
+        )
+        for key in color_keys:
+            value = opts.get(key)
+            if value is not None and not re.fullmatch(r'#[0-9a-fA-F]{6}', str(value)):
+                raise ValueError(f'{key} must be a six-digit hexadecimal color.')
+
         if not opts.get('text_align'):
             opts['text_align'] = 'right' if opts.get('direction') == 'rtl' else 'left'
+        if opts['text_align'] not in ('left', 'center', 'right', 'justify'):
+            raise ValueError('text_align must be left, center, right, or justify.')
 
         # Normalize font family name
         raw_font = opts.get('font_family', 'Noto Naskh Arabic')
@@ -817,6 +849,9 @@ class MarkdownService:
         md_text, file_names = MarkdownService._read_and_merge_files(markdown_files, opts)
         parts = MarkdownService._build_parts(md_text, file_names, opts)
         bookmarks = parts['bookmarks']
+
+        output_dir = os.path.dirname(os.path.abspath(output_path))
+        os.makedirs(output_dir, exist_ok=True)
 
         header_template = MarkdownService._build_playwright_template(opts, 'header')
         footer_template = MarkdownService._build_playwright_template(opts, 'footer')
@@ -866,7 +901,9 @@ class MarkdownService:
         header_template: str = '',
         footer_template: str = '',
     ) -> None:
-        page = browser.new_page()
+        # Markdown may contain raw HTML. Printing does not need JavaScript,
+        # so disable it in the conversion context to prevent embedded scripts.
+        page = browser.new_page(java_script_enabled=False)
         try:
             page.set_content(html, wait_until='load')
             page.evaluate("document.fonts.ready")
@@ -918,7 +955,9 @@ class MarkdownService:
             file_name = os.path.splitext(os.path.basename(file_path))[0]
             file_names.append(file_name)
             sections.append(content)
-        return '\n\n---\n\n'.join(sections), file_names
+        if not sections:
+            raise ValueError('No readable Markdown files were provided.')
+        return f'\n\n{SOURCE_FILE_BOUNDARY}\n\n'.join(sections), file_names
 
     @staticmethod
     def _preprocess_markdown(text: str) -> str:
@@ -982,8 +1021,8 @@ class MarkdownService:
         def _strip_html_tags(value: str) -> str:
             return HTML_TAGS_RE.sub('', value)
 
-        # Split into chapters based on --- separators
-        parts = CHAPTER_SPLIT_RE.split(md_text)
+        # Source files define chapters. Markdown horizontal rules remain content.
+        parts = md_text.split(SOURCE_FILE_BOUNDARY)
         chapter_htmls = []
         bookmarks = []
         multiple_files = len(parts) > 1
@@ -1043,7 +1082,7 @@ class MarkdownService:
 
                 part_html = HEADING_RE.sub(inject_heading_marker, part_html)
 
-            cls = 'chapter' if i > 0 or opts.get('chapter_breaks', True) else 'chapter first'
+            cls = 'chapter' if i > 0 and opts.get('chapter_breaks', True) else 'chapter first'
             section_marker = f'<span class="bm-marker">BMK_BM_FILE_{i} </span>'
             chapter_htmls.append(f'<section id="bm-file-{i}" class="{cls}">{section_marker}\n{part_html}\n</section>')
         body_html = '\n'.join(chapter_htmls)
@@ -1122,7 +1161,7 @@ class MarkdownService:
         else:
             body = f"{parts['cover_html']}\n{parts['toc_html']}\n{parts['body_html']}"
         return f"""<!DOCTYPE html>
-<html dir="{opts['direction']}" lang="{lang}">
+<html dir="{opts['direction']}" lang="{html.escape(str(lang), quote=True)}">
 <head>
 <meta charset="utf-8">
 <style>
@@ -1173,10 +1212,10 @@ class MarkdownService:
 
     @staticmethod
     def _build_cover_page(opts: dict) -> str:
-        title = opts.get('title', '')
-        subtitle = opts.get('subtitle', '')
-        author = opts.get('author', '')
-        publisher = opts.get('publisher', '')
+        title = html.escape(str(opts.get('title', '') or ''))
+        subtitle = html.escape(str(opts.get('subtitle', '') or ''))
+        author = html.escape(str(opts.get('author', '') or ''))
+        publisher = html.escape(str(opts.get('publisher', '') or ''))
         date_str = datetime.now().strftime('%Y-%m-%d')
 
         parts = []
@@ -1210,7 +1249,7 @@ class MarkdownService:
             m = TOC_ENTRY_RE.match(line.strip())
             if m:
                 level = len(m.group(1))
-                title = m.group(2).strip()
+                title = html.escape(m.group(2).strip())
                 entries.append(f'<div class="toc-entry level-{level}"><span class="toc-title">{title}</span></div>')
         if not entries:
             return ''

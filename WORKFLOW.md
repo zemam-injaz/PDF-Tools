@@ -1,32 +1,32 @@
-# AI Agent Workflow
+# سير عمل وكيل الذكاء الاصطناعي
 
-Use this workflow for coding tasks in this repository.
+اتّبع هذا السير في مهام البرمجة داخل هذا المستودع.
 
-## Before editing
+## قبل التعديل
 
-1. Read [PROJECT.md](PROJECT.md), [STATUS.md](STATUS.md), relevant backlog/plan sections, and any applicable `AGENTS.md` instructions.
-2. Inspect `git status` and preserve all existing user changes, including changes outside the requested feature.
-3. Trace the current UI, API, backend service, and persistence path before changing behavior.
-4. State the implementation scope and any assumptions in a short progress update when work spans multiple steps.
+1. اقرأ [PROJECT.md](PROJECT.md) و[STATUS.md](STATUS.md) وأقسام قائمة الأعمال/الخطة ذات الصلة وأي تعليمات `AGENTS.md` منطبقة.
+2. افحص `git status` وحافظ على جميع تغييرات المستخدم القائمة، بما يشمل التغييرات خارج الميزة المطلوبة.
+3. تتبَّع مسار الواجهة وواجهة API وخدمة الخادم والتخزين الحالي قبل تغيير السلوك.
+4. وضّح نطاق التنفيذ وأي افتراضات في تحديث تقدّم موجز عند امتداد العمل عبر خطوات متعددة.
 
-## While implementing
+## أثناء التنفيذ
 
-- Make the smallest complete change that satisfies the request.
-- Follow the existing React/TypeScript, FastAPI/Python, and Tauri conventions.
-- Keep UI, API, backend, and persisted data behavior consistent.
-- Maintain Arabic RTL behavior and testable user-facing error states by design.
-- Preserve existing APIs and data; make migrations explicit and backwards compatible.
-- Do not add dependencies or replace a major subsystem without a clear requirement.
-- Do not commit, publish, deploy, or modify external services unless the user asks.
+- أنجز أصغر تغيير كامل يحقّق الطلب.
+- اتبع اصطلاحات React/TypeScript وFastAPI/Python وTauri القائمة.
+- حافظ على اتساق سلوك الواجهة وواجهة API والخادم والبيانات المخزّنة.
+- حافظ على سلوك RTL العربي وحالات أخطاء قابلة للاختبار للمستخدم بالتصميم.
+- حافظ على واجهات API والبيانات القائمة؛ واجعل أي ترحيل صريحًا ومتوافقًا مع الإصدارات السابقة.
+- لا تُضِف اعتماديات ولا تستبدل نظامًا فرعيًا رئيسيًا دون متطلّب واضح.
+- لا تُودِع أو تنشر أو تُوزّع أو تعدّل خدمات خارجية إلا إذا طلب المستخدم.
 
-## Validation and completion
+## التحقق والإكمال
 
-- Run checks only when the user requests them or the task instructions explicitly require them.
-- Report what changed, relevant files, validation performed (or not performed), and known limitations.
-- Update [STATUS.md](STATUS.md) and [BACKLOG.md](BACKLOG.md) when a milestone changes project state.
-- Record durable architectural choices in [DECISIONS.md](DECISIONS.md).
-- Keep the detailed implementation plan current as phases complete.
+- شغّل الفحوصات فقط عند طلب المستخدم أو عندما تشترطها تعليمات المهمة صراحةً.
+- أبلغ عمّا تغيّر والملفات ذات الصلة والتحقق المُجرى (أو غير المُجرى) والقيود المعروفة.
+- حدِّث [STATUS.md](STATUS.md) و[BACKLOG.md](BACKLOG.md) عند تغيّر حالة المشروع بمعلم.
+- سجّل الخيارات المعمارية الدائمة في [DECISIONS.md](DECISIONS.md).
+- أبقِ خطة التنفيذ التفصيلية محدّثة مع اكتمال المراحل.
 
-## Reader enhancement sequence
+## تسلسل تحسين القارئ
 
-For reader/comments work, follow [REVIEW_ENHANCEMENTS_PLAN.md](REVIEW_ENHANCEMENTS_PLAN.md) in order unless the user changes priority. Complete the authorized scope; do not stop for approval between phases. Ask only for information that materially blocks a safe implementation.
+لأعمال القارئ/التعليقات، اتبع [REVIEW_ENHANCEMENTS_PLAN.md](REVIEW_ENHANCEMENTS_PLAN.md) بالترتيب ما لم يغيّر المستخدم الأولوية. أكمِل النطاق المصرّح به؛ لا تتوقّف لطلب الموافقة بين المراحل. اسأل فقط عن معلومة تمنع تنفيذًا آمنًا بشكل مادي.

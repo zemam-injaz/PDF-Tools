@@ -1,37 +1,48 @@
-# Backlog
+# قائمة الأعمال المتراكمة (Backlog)
 
-This is a prioritized project backlog, not a claim that all items are approved for immediate implementation. Follow the user's request and [WORKFLOW.md](WORKFLOW.md) when selecting work.
+هذه قائمة أعمال مرتّبة حسب الأولوية، وليست ادّعاءً بأن كل بند معتمد للتنفيذ الفوري. اتبع طلب المستخدم و[WORKFLOW.md](WORKFLOW.md) عند اختيار العمل.
 
-## P0 — Reader and comments enhancements
+## P0 — تحسينات القارئ والتعليقات
 
-Track implementation and acceptance criteria in [REVIEW_ENHANCEMENTS_PLAN.md](REVIEW_ENHANCEMENTS_PLAN.md).
+تتبَّع التنفيذ ومعايير القبول في [REVIEW_ENHANCEMENTS_PLAN.md](REVIEW_ENHANCEMENTS_PLAN.md). حالتها: منفّذة في الكود (2026-10-11) دون إيداع، مع قيود موثّقة في [STATUS.md](STATUS.md). البنود الجزئية مُعلَّمة أدناه.
 
-- [ ] Render visible PDF pages plus a small buffer instead of mounting the entire document.
-- [ ] Add direct page navigation, fit-width/fit-page, and continuous/single/two-page layouts.
-- [ ] Preserve page position when zoom or layout changes; persist last-read location and reader preferences.
-- [ ] Ensure text selection/copy works when annotation tools are inactive.
-- [ ] Add synchronized thumbnail and document-bookmark navigation.
-- [ ] Add passage selection, highlight/underline/note, and a navigable comments panel.
-- [ ] Add stable passage anchors and backwards-compatible persistence.
-- [ ] Export portable PDF-native annotations while retaining an explicit flattened export option where supported.
-- [ ] Check RTL layout, Arabic selection order, keyboard navigation, and save/error states.
+- [x] عرض الصفحات المرئية فقط مع مخزون صغير من الصفحات المجاورة بدلًا من تركيب المستند كاملًا.
+- [x] إضافة تنقّل مباشر إلى الصفحة، وأزرار ملاءمة العرض/الصفحة، وتخطيطات: مستمر، صفحة واحدة، صفحتان.
+- [x] الحفاظ على موضع الصفحة عند تغيير التقريب أو التخطيط؛ وحفظ آخر موضع قراءة وتفضيلات القارئ لكل كتاب.
+- [x] ضمان عمل تحديد النص والنسخ عندما لا تكون أدوات التعليق مفعّلة.
+- [x] إضافة شريط جانبي للملاحة يجمع المصغّرات والفواصل المرجعية مع مزامنة موضع التمرير.
+- [x] إضافة تحديد مقطع وإنشاء تظليل/تسطير/ملاحظة مع لوحة تعليقات قابلة للملاحة.
+- [ ] إضافة مراسي مقاطع مستقرة وتخزين متوافق مع الإصدارات السابقة. — جزئي: المراسي/التخزين الإضافي منفّذ؛ **بصمة هوية المستند (D3) ما زالت مطلوبة**.
+- [x] تصدير تعليقات PDF أصلية محمولة مع إبقاء خيار تصدير مسطّح صريح حيث أمكن.
+- [ ] مراجعة اتجاه RTL، وترتيب تحديد النص العربي، والتنقّل بلوحة المفاتيح، وحالات الحفظ/الخطأ. — جزئي: RTL والحالات والإشعارات واختصارات لوحة المفاتيح منفّذة؛ **التحقق اليدوي من ترتيب تحديد النص العربي المختلط متبقٍ**.
 
-## P1 — Existing product roadmap
+### تفصيل P0 إلى مهام قابلة للتنفيذ
 
-These items are gathered from existing planning documents and need current product prioritization before implementation:
+- [x] حلّ تعارض `width` مقابل `scale` في `PDFPageRenderer.tsx` ليكون للحجم مصدر واحد.
+- [x] إضافة افتراضية (virtualization) نافذية في `InteractivePDFViewer.tsx` مع مخزون ±صفحتين.
+- [x] إصلاح التقاط المدخلات في `AnnotationOverlay.tsx`: `pointer-events: none` للجذر عند عدم تفعيل أداة، مع إبقاء عناصر التعليقات قابلة للنقر.
+- [x] حفظ تفضيلات القارئ في `src/lib/appStorage.ts` بمفتاح `reader_prefs_<bookId>`.
+- [x] مزامنة الشريط الجانبي (مصغّرات + فهرس) مع الصفحة الحالية.
+- [x] تجهيز هندسة المقاطع (مستطيلات معيارية) داخل حقل `data` مع الحفاظ على السجلات القديمة.
+- [x] تضمين عامل PDF.js محليًا بدلًا من CDN (D6).
 
-- [ ] Batch processing.
-- [ ] Native/local OCR options and improved Arabic OCR workflow.
-- [ ] PDF to Word/Excel/CSV conversion improvements.
-- [ ] PDF form filling and form creation.
-- [ ] Digital signatures.
-- [ ] PDF comparison.
-- [ ] Table of contents generation and improved document navigation.
-- [ ] Additional page operations and editing tools (crop, reverse, blank page, headers/footers).
+## P1 — خارطة طريق المنتج الحالية
 
-## Backlog maintenance
+هذه البنود مجموعة من وثائق تخطيط قائمة وتحتاج تحديد أولويات منتج حديثة قبل التنفيذ:
 
-- Add a concise item with a user outcome and acceptance criteria.
-- Link multi-step work to a plan document.
-- Move completed items out of active sections and summarize them in [STATUS.md](STATUS.md).
-- Avoid duplicating implementation details across this file and the detailed plan.
+- [ ] تحسين تحويل Markdown إلى PDF وفق [خطة التحليل والتنفيذ](plans/markdown_to_pdf_improvement_plan.md). — نُفّذت تحسينات أولية للحدود بين الملفات، وسهولة الإعداد، ونصوص HTML الديناميكية؛ تبقّت دقة الفهرس والصور المحلية والتحقق والحفظ الذري والتقدم.
+- [ ] المعالجة بالدفعات (Batch processing).
+- [ ] خيارات OCR محلية/أصلية وتحسين سير عمل OCR العربي.
+- [ ] تحسينات التحويل من PDF إلى Word/Excel/CSV.
+- [ ] تعبئة النماذج وإنشاؤها.
+- [ ] التوقيعات الرقمية.
+- [ ] مقارنة ملفات PDF.
+- [ ] توليد جدول المحتويات وتحسين ملاحة المستند.
+- [ ] عمليات تحرير صفحات إضافية (اقتصاص، عكس، صفحة فارغة، رؤوس/تذييلات).
+
+## صيانة القائمة
+
+- أضف بندًا موجزًا لنتيجة مستخدم مع معايير قبول.
+- اربط الأعمال متعددة الخطوات بوثيقة خطة.
+- انقل البنود المكتملة خارج الأقسام النشطة ولخّصها في [STATUS.md](STATUS.md).
+- تجنّب تكرار تفاصيل التنفيذ بين هذا الملف والخطة التفصيلية.

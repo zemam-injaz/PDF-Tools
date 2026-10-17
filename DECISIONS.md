@@ -1,27 +1,75 @@
-# Decision Log
+# سجل القرارات
 
-Record durable project decisions here. Add new entries at the top with date, decision, and rationale. Revisit a decision explicitly if requirements or evidence change.
+سجّل هنا القرارات المعمارية الدائمة. أضِف المُدخلات الجديدة في الأعلى مع التاريخ والقرار والمبرّر. أعِد النظر في أي قرار صراحةً إذا تغيّرت المتطلبات أو الأدلة.
 
-## 2026-10-11 — Keep the existing PDF rendering stack for reader improvements
+## 2026-10-11 — تخزين الردود وحالة الحل داخل حقل `data`
 
-**Decision:** Continue with React + `react-pdf` / PDF.js for the interactive reader and PyMuPDF for backend PDF operations. Use PdfCraft as a design reference only.
+**القرار:** تُخزَّن ردود التعليق وحالة «تم الحل» داخل حقل `data` الموجود (`replies`, `resolved`) وتُحدَّث عبر مسار `PUT /api/annotations/{id}` القائم الذي يحدّث `data` فقط، دون إضافة أعمدة أو مسارات جديدة.
 
-**Rationale:** Matn already has a working Tauri, React, and FastAPI/PyMuPDF architecture. Replacing it with PdfCraft's Rust application/engine would be a larger integration or rewrite, while the requested reader and comments improvements can be implemented within the current stack.
+**المبرّر:** يحقق المطلوب بأقل تغيير ويحافظ على توافق كامل مع عملاء API الحاليين؛ ويمكن الترقية لاحقًا إلى أعمدة إذا احتاجت الاستعلامات ذلك.
 
-## 2026-10-11 — Keep app-stored notes distinct from annotations embedded in PDFs
+## 2026-10-11 — وضعا تصدير التعليقات دون كسر العقد
 
-**Decision:** The reader must clearly distinguish Matn's SQLite-backed annotations from native annotations already stored inside a PDF. Any unification must define import, ownership, duplicate handling, and export behavior before changing persistence.
+**القرار:** يقبل `/api/annotations/burn` حقل `mode` اختياريًا بقيمة افتراضية `native` (عناصر تعليق PDF أصلية)، و`flatten` للدمج في محتوى الصفحة. يحافظ الافتراضي على سلوك نقطة النهاية القائمة بينما يجعل التسوية خيارًا صريحًا.
 
-**Rationale:** These are currently separate workflows and data sources. Treating them as interchangeable risks hiding or losing user annotations.
+**المبرّر:** المطلوب هو تصدير محمول افتراضي مع إبقاء خيار التسوية الصريح؛ والقيمة الافتراضية تمنع كسر المستهلكين الحاليين.
 
-## 2026-10-11 — Evolve annotation storage compatibly
+## 2026-10-11 — عقد الإحداثيات: معيارية وثابتة
 
-**Decision:** Preserve the ability to load existing point annotations when adding passage anchors, replies, or resolved state. Prefer optional fields or a migration with a safe fallback.
+**القرار:** تبقى إحداثيات التعليقات معيارية بالنسبة للصفحة `x, y` و`w, h` في المجال `[0,1]` مع نقطة أصل أعلى-يسار. تُخزَّن مستطيلات المقاطع المتعدّدة الأسطر في المصفوفة `rects` داخل حقل `data`. لا تُضاف أعمدة إحداثيات جديدة؛ تُشتق الهندسة بالمقاسات النقطية عند الحاجة (`x * page.rect.width`).
 
-**Rationale:** Existing records are user data; new reader capabilities must not invalidate saved notes.
+**المبرّر:** الإحداثيات الحالية معيارية أصلًا، ويطابق أصل أعلى-يسار كلًا من المتصفح وPyMuPDF (انظر `annotation_modifier_service.py`). هذا يجعل الروابط مستقلة عن التقريب وحجم النافذة.
 
-## Open questions
+## 2026-10-11 — الهوية: بصمة المستند بدلًا من اسم الملف
 
-- Confirm the canonical public brand/name across the app. The user and README use “Matn”; some existing project files use “Warraq”.
-- Decide whether app-stored annotations should eventually sync across devices; current architecture is local-first.
-- Decide default export behavior for native annotations versus flattened/burned appearance.
+**القرار:** يُخزَّن اختياريًا «بصمة» للمستند (عدد الصفحات + معرّف `/ID` لملف PDF أو بصمة الصفحتين الأولى والأخيرة) على سجل الكتاب في المكتبة. تُحلّ التعليقات بالترتيب: `book_id` أولًا، ثم البصمة، ثم المسار المُطبَّع. لا يُعتمد على اسم الملف وحده أبدًا.
+
+**المبرّر:** القارئ يستخدم معرّف المكتبة الرقمي بينما ماسح التعليقات يستخدم المسار، ما يخلق عالَمين منفصلين. البصمة تحلّ حالة نقل الملف أو تغيّره دون فقد التعليقات.
+
+## 2026-10-11 — عقد المدخلات: الطبقة تعترض المؤشر فقط عند تفعيل أداة
+
+**القرار:** عندما تكون الأداة النشطة `none`، يكون جذر طبقة التعليقات `pointer-events: none` وتبقى عناصر التعليقات الفرعية `pointer-events: auto` قابلة للنقر/التحرير. عند تفعيل أداة، يصبح الجذر `pointer-events: auto` مع مؤشر `crosshair`، وتُعطَّل قابليّة تحديد النص في الصفحة. يُثبَّت ترتيب الطبقات: اللوحة ← طبقة النص ← الطبقة الأصلية ← طبقات مَتن، مع قيم `z-index` ثابتة.
+
+**المبرّر:** الطبقة الحالية تلتقط الحواس دائمًا وتعطّل تحديد النص، كما أن إبقاء العناصر الفرعية قابلة للنقر ضروري لتحرير التعليقات القائمة.
+
+## 2026-10-11 — نموذج البيانات: توسعة إضافية متوافقة فقط
+
+**القرار:** لا يُغيّر معنى الأعمدة القائمة. يُوسَّع اتحاد الأنواع في TypeScript ليشمل `'highlight' | 'underline' | 'note'`، ويقبل الخادم أي نص أصلًا. تُخزَّن الحقول الجديدة داخل `data`: `quote`، `context_before`، `context_after`، `rects`، `color`، `parent_id`، `resolved`، `author`، `source: 'matn'`. لا تُضاف أعمدة إلا إذا لزم الاستعلام، وبشكل مُقيَّد بـ `ALTER TABLE ... ADD COLUMN` فوق `PRAGMA table_info` مع قيم افتراضية. لا تُحذف مفاتيح `data` غير المعروفة.
+
+**المبرّر:** الحفاظ على تحميل السجلات القديمة دون ترحيل مدمّر.
+
+## 2026-10-11 — التشخيص: إزالة التنبيهات الحاجبة والسجلات
+
+**القرار:** تُستبدل `alert()` و`confirm()` بنمط الإشعار/الحالة داخل المكوّن (النمط موجود في `CommentsTool.tsx`). تُزال استدعاءات `console.*` من مسار القارئ أو تُحجب خلف راية تصحيح.
+
+**المبرّر:** تجربة استخدم أفضل وحالات خطأ قابلة للتنفيذ.
+
+## 2026-10-11 — عامل PDF.js: التحميل المحلي
+
+**القرار:** يُفضَّل تضمين عامل `pdfjs-dist` محليًا، مع إبقاء CDN بديلًا موثّقًا فقط.
+
+**المبرّر:** تطبيق سطح مكتب يعمل دون اتصال؛ تحميل العامل من الشبكة يهدّد موثوقية التشغيل.
+
+## 2026-10-11 — الإبقاء على حزمة العرض الحالية لتحسينات القارئ
+
+**القرار:** الاستمرار باستخدام React + `react-pdf` / PDF.js للقارئ التفاعلي وPyMuPDF لعمليات الخادم. يُستخدم PdfCraft كمرجع تصميم فقط.
+
+**المبرّر:** لدى مَتن معمارية عاملة (Tauri + React + FastAPI/PyMuPDF)؛ واستبدالها بمحرّك PdfCraft (Rust) يمثّل إعادة كتابة أكبر، بينما يمكن تنفيذ تحسينات القارئ والتعليقات المطلوبة ضمن الحزمة الحالية.
+
+## 2026-10-11 — إبقاء ملاحظات التطبيق متمايزة عن تعليقات PDF المضمّنة
+
+**القرار:** يجب على القارئ التمييز بوضوح بين تعليقات مَتن المخزّنة في SQLite وتعليقات PDF الأصلية. أي توحيد يجب أن يعرّف الاستيراد والملكية ومعالجة التكرار وسلوك التصدير قبل تغيير التخزين.
+
+**المبرّر:** هذان سيرَا عمل ومصدرا بيانات منفصلان حاليًا؛ والتعامل معهما كمتطابقين يعرّض ملاحظات المستخدم للضياع أو الإخفاء.
+
+## 2026-10-11 — تطوير تخزين التعليقات بما يتوافق مع الإصدارات السابقة
+
+**القرار:** الحفاظ على القدرة على تحميل تعليقات النقاط القائمة عند إضافة مراسي المقاطع أو الردود أو حالة «تم الحل». يُفضَّل الحقول الاختيارية أو ترحيل مع بديل آمن.
+
+**المبرّر:** السجلات القائمة بيانات مستخدم؛ ويجب ألّا تُبطل القدرات الجديدة الملاحظات المحفوظة.
+
+## أسئلة مفتوحة
+
+- تأكيد الاسم العام الرسمي عبر التطبيق. المستخدم و`README` يستخدمان «مَتن»، وبعض ملفات المشروع تستخدم «وراق».
+- تحديد ما إذا كان ينبغي مزامنة تعليقات التطبيق عبر الأجهزة مستقبلًا؛ المعمارية الحالية محلية أولًا.
+- تحديد سلوك التصدير الافتراضي: تعليقات أصلية أم مظهر مسطّح/محروق.

@@ -283,6 +283,7 @@ class BurnAnnotationsRequest(BaseModel):
     pdf_path: str
     output_path: str
     annotations: List[Dict[str, Any]]
+    mode: str = 'native'  # 'native' | 'flatten'
 
 
 # Chapter Weight Analysis operations
@@ -982,11 +983,11 @@ def burn_annotations(request: BurnAnnotationsRequest):
     """Burn decorations (dots, labels) into a copy of the PDF"""
     try:
         success = AnnotationModifierService.burn_annotations(
-            request.pdf_path, request.output_path, request.annotations
+            request.pdf_path, request.output_path, request.annotations, request.mode
         )
         if not success:
-            raise HTTPException(status_code=500, detail="Failed to burn annotations")
-        return {"status": "success", "message": "Annotations burned into PDF successfully"}
+            raise HTTPException(status_code=500, detail="Failed to export annotations")
+        return {"status": "success", "message": "Annotations exported successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1483,6 +1484,8 @@ async def markdown_to_pdf(request: MarkdownToPDFRequest):
         return {"status": "success", "message": "PDF created successfully", "output_path": request.output_path}
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ImportError as e:
         raise HTTPException(status_code=500, detail=f"Missing dependency: {str(e)}. Run: pip install markdown-it-py mdit-py-plugins playwright")
     except Exception as e:

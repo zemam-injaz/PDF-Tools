@@ -1,49 +1,63 @@
-# Matn PDF Project
+# مشروع مَتن (Matn) لملفات PDF
 
-## Purpose
+## الغرض
 
-Matn is an Arabic-first desktop PDF workspace for reading, organizing, annotating, and converting PDF documents. The current repository also contains older Warraq-branded documentation and UI references; use **Matn PDF** as the working product name because that is the name used by the user and the current README. Do not perform a broad branding change as part of unrelated work.
+مَتن مساحة عمل مكتبية لملفات PDF، عربيةُ الأولى، مخصّصة لقراءة المستندات وتنظيمها والتعليق عليها وتحويلها. يحتوي المستودع أيضًا على وثائق وواجهات أقدم تحمل اسم «وراق»؛ ويُعتمد اسم **مَتن (Matn PDF)** اسمًا عامًّا للعمل لأنه الاسم المستخدم من قِبل المستخدم وملف `README.md` الحالي. لا تُجرِ تغييرًا شاملًا للهوية البصرية/الاسم ضمن أعمال غير مرتبطة.
 
-## Product goals
+## أهداف المنتج
 
-- Make reading long Arabic and bilingual PDFs comfortable and reliable.
-- Keep document processing local where possible and preserve user documents.
-- Provide practical PDF tools around reading, bookmarks, annotations, library management, OCR, and export.
-- Maintain an Arabic-first RTL interface while supporting English documents and UI content.
+- جعل قراءة ملفات PDF الطويلة، العربية منها والمختلطة، مريحة وموثوقة.
+- إبقاء معالجة المستندات محلية قدر الإمكان، والحفاظ على مستندات المستخدم.
+- توفير أدوات PDF عملية حول القراءة والفواصل المرجعية والتعليقات وإدارة المكتبة والتعرّف الضوئي (OCR) والتصدير.
+- الحفاظ على واجهة عربية أولى واتجاه من اليمين إلى اليسار (RTL) مع دعم المستندات والمحتوى بالإنجليزية.
 
-## Current architecture
+## المعمارية الحالية
 
-- Desktop shell: Tauri 2 / Rust.
-- Frontend: React 19, TypeScript, Vite, Tailwind CSS, Framer Motion.
-- PDF rendering: `react-pdf` / PDF.js.
-- Backend: Python FastAPI with PyMuPDF (`fitz`), communicating with the frontend over localhost HTTP.
-- Persistent data: SQLite, including book library, reading progress, subscriptions, and app-stored annotations.
-- Frontend entry points: `src/App.tsx`, `src/components/`, `src/api/`, `src/lib/`.
-- Backend entry points: `python-server/server.py`, `python-server/services/`, `python-server/models/`.
+- غلاف سطح المكتب: Tauri 2 / Rust.
+- الواجهة الأمامية: React 19، TypeScript، Vite، Tailwind CSS، Framer Motion.
+- عرض PDF: `react-pdf` / PDF.js.
+- الخادم الخلفي: Python FastAPI مع PyMuPDF (حزمة `fitz`)، يتواصل مع الواجهة عبر HTTP على المضيف المحلي.
+- البيانات الدائمة: SQLite، وتشمل مكتبة الكتب وتقدّم القراءة والاشتراكات والتعليقات المخزّنة داخل التطبيق.
+- نقاط دخول الواجهة الأمامية: `src/App.tsx`، `src/components/`، `src/api/`، `src/lib/`.
+- نقاط دخول الخادم: `python-server/server.py`، `python-server/services/`، `python-server/models/`.
 
-## Reader and annotation context
+## سياق القارئ والتعليقات
 
-- The interactive reader is in `src/components/viewer/InteractivePDFViewer.tsx` with page composition in `PDFPageRenderer.tsx`.
-- Reader overlays and annotation UI are in `src/components/viewer/`.
-- Frontend annotation calls are in `src/api/annotationApi.ts`.
-- Annotation data model and SQLite persistence are in `python-server/models/annotation.py` and `python-server/services/annotation_service.py`.
-- The directory-scanning and native-PDF annotation workflow is surfaced in `src/components/tools/CommentsTool.tsx`.
-- Existing reader notes are app-stored records; the comments scanner also reads annotations embedded in PDFs. Keep these concepts distinct unless a deliberate migration unifies their UI.
+- القارئ التفاعلي في `src/components/viewer/InteractivePDFViewer.tsx`، وتركيب الصفحات في `PDFPageRenderer.tsx`.
+- طبقات القارئ وواجهة التعليقات في `src/components/viewer/`.
+- استدعاءات التعليقات في الواجهة في `src/api/annotationApi.ts`.
+- نموذج بيانات التعليقات وتخزينها في SQLite في `python-server/models/annotation.py` و`python-server/services/annotation_service.py`.
+- سير عمل فحص المجلدات وقراءة تعليقات PDF الأصلية معروض في `src/components/tools/CommentsTool.tsx`.
+- ملاحظات القارئ الحالية سجلات مخزّنة داخل التطبيق، بينما يقرأ ماسح التعليقات التعليقات المضمّنة في ملفات PDF نفسها. يجب إبقاء هذين المفهومين متمايزَين ما لم يحدث ترحيل مقصود يوحّد واجهتهما.
 
-## Engineering constraints
+### حقائق مُتحقّق منها في الكود (يجب أن توجّه العمل)
 
-- Prefer improving the existing React/PDF.js and PyMuPDF architecture over replacing the PDF engine.
-- Treat `storytold/pdfcraft` as a product/architecture reference, not a runtime dependency or code source.
-- Preserve existing API behavior and saved user data. Make schema evolution backward compatible.
-- Do not overwrite or revert unrelated working-tree changes.
-- Keep changes scoped to the requested feature; avoid unrelated refactors and branding changes.
+- يشغّل `InteractivePDFViewer` **كل** الصفحات دفعةً واحدة عبر `Array.from(new Array(numPages))` دون أي افتراضية (virtualization).
+- تُمرَّر `Page` القيمتان `width={800}` و`scale` معًا، بينما عرض الحاوية هو `800 * scale` — مصدر تعارض محتمل في المحاذاة.
+- طبقة `AnnotationOverlay` (SVG) دائمًا `pointer-events-auto` مع مستطيل شفاف يغطّي الصفحة، ما يمنع تحديد النص في وضع القراءة.
+- الإحداثيات مخزّنة أصلًا **معيارية (0–1)**، أي مستقلة عن التقريب وحجم النافذة.
+- عامل PDF.js (`worker`) يُحمَّل من شبكة CDN (unpkg)، وهو خطر على تطبيق سطح مكتب يعمل دون اتصال.
+- نوع التعليق في الواجهة محصور بـ `'text' | 'dot' | 'timestamp'`، بينما الخادم يقبل أي نص في `type`، والهندسة تُخزَّن في حقل `data` الحرّ (JSON).
+- جدول التعليقات: `annotations(id, book_id, page, type, x, y, data, created_at)` في SQLite لكل `book_id`.
+- القارئ يُفتح بـ `bookId={book.id.toString()}` (المعرّف الرقمي للمكتبة)، بينما يعمل `CommentsTool` بمسار الملف `file_path` فقط — أي **عالَمان منفصلان للتعليقات**.
+- «حرق» التعليقات الحالي ينشئ **عناصر تعليق PDF أصلية** (`add_circle_annot`، `add_freetext_annot`) لا محتوى مسطّحًا، رغم الاسم.
+- استخراج الفواصل المرجعية الهرمية متاح عبر `/api/bookmarks/extract` ويعيد `level/title/page/end_page/page_count`.
+- اصطلاح التخزين المحلي: ملف في مجلد بيانات Tauri أولًا، ثم `localStorage` (بادئة `pdf_tools_`) كبديل.
 
-## Source-of-truth order
+## قيود الهندسة
 
-1. The user's current request and constraints.
-2. Repository instructions such as `AGENTS.md` if present.
-3. This file and the project workflow in [WORKFLOW.md](WORKFLOW.md).
-4. Current implementation and API behavior.
-5. Historical planning/status documents, which may be stale and should be updated when relevant.
+- يُفضَّل تحسين معمارية React/PDF.js وPyMuPDF القائمة بدلًا من استبدال محرّك PDF.
+- يُعامَل `storytold/pdfcraft` كمرجع للمنتج والمعمارية فقط، لا كاعتماد زمن تشغيل ولا كمصدر شيفرة.
+- الحفاظ على سلوك واجهات API والبيانات المحفوظة. أي تطوّر في المخطط يجب أن يكون متوافقًا مع الإصدارات السابقة.
+- عدم الكتابة فوق أو التراجع عن تغييرات غير مرتبطة موجودة في شجرة العمل.
+- حصر التغييرات في الميزة المطلوبة؛ تجنّب إعادة الهيكلة والهوية غير المرتبطة.
 
-See [STATUS.md](STATUS.md), [BACKLOG.md](BACKLOG.md), [DECISIONS.md](DECISIONS.md), and [REVIEW_ENHANCEMENTS_PLAN.md](REVIEW_ENHANCEMENTS_PLAN.md).
+## ترتيب مصادر الحقيقة
+
+1. طلب المستخدم الحالي وقيوده.
+2. تعليمات المستودع مثل `AGENTS.md` إن وُجدت.
+3. هذا الملف وسير العمل في [WORKFLOW.md](WORKFLOW.md).
+4. التنفيذ الحالي وسلوك واجهات API.
+5. الوثائق التاريخية للتخطيط/الحالة، والتي قد تكون قديمة ويجب تحديثها عند الحاجة.
+
+انظر [STATUS.md](STATUS.md)، و[BACKLOG.md](BACKLOG.md)، و[DECISIONS.md](DECISIONS.md)، و[REVIEW_ENHANCEMENTS_PLAN.md](REVIEW_ENHANCEMENTS_PLAN.md).

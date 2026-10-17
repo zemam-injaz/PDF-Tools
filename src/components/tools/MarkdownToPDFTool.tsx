@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { getApiBaseUrl } from '../../lib/api';
 import { FolderOpen, FileText, ArrowRight, CheckCircle, AlertCircle, X, FileImage, Settings, BookOpen, PanelTop, Palette, Lock } from 'lucide-react';
 import { FileInput, MultiFileInput } from '../ui/FileInput';
@@ -68,6 +68,8 @@ export const MarkdownToPDFTool: React.FC = () => {
   const [activeTab, setActiveTab] = useState('basic');
   const [status, setStatus] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
   const [lastOutputPath, setLastOutputPath] = useState('');
+  const suggestedTitleRef = useRef('');
+  const suggestedOutputPathRef = useRef('');
 
   // Basic
   const [pageSize, setPageSize] = useState('A4');
@@ -124,6 +126,37 @@ export const MarkdownToPDFTool: React.FC = () => {
 
   const resetColors = () => setColors(DEFAULT_COLORS);
 
+  const handleFilesChange = (selectedFiles: string[]) => {
+    const uniqueFiles = Array.from(new Set(selectedFiles));
+    setFiles(uniqueFiles);
+    if (uniqueFiles.length === 0) return;
+
+    const firstFile = uniqueFiles[0];
+    const filename = firstFile.split(/[/\\]/).pop() || '';
+    const titleSuggestion = filename.replace(/\.md$/i, '');
+    const outputSuggestion = firstFile.replace(/\.md$/i, '.pdf');
+    setTitle((current) => !current || current === suggestedTitleRef.current ? titleSuggestion : current);
+    setOutputPath((current) => !current || current === suggestedOutputPathRef.current ? outputSuggestion : current);
+    suggestedTitleRef.current = titleSuggestion;
+    suggestedOutputPathRef.current = outputSuggestion;
+  };
+
+  const applyPreset = (preset: string) => {
+    if (preset === 'arabic-reading') {
+      setPageSize('A4'); setFontFamily('IBM Plex Sans Arabic'); setBodySize(12);
+      setLineHeight(2); setDirection('rtl'); setMarginTop(20); setMarginBottom(25);
+      setMarginLeft(20); setMarginRight(20);
+    } else if (preset === 'compact') {
+      setPageSize('A4'); setFontFamily('IBM Plex Sans Arabic'); setBodySize(10);
+      setLineHeight(1.5); setDirection('rtl'); setMarginTop(15); setMarginBottom(15);
+      setMarginLeft(15); setMarginRight(15);
+    } else if (preset === 'english') {
+      setPageSize('A4'); setFontFamily('Noto Naskh Arabic'); setBodySize(11);
+      setLineHeight(1.6); setDirection('ltr'); setMarginTop(20); setMarginBottom(20);
+      setMarginLeft(22); setMarginRight(22);
+    }
+  };
+
   const handleConvert = async () => {
     if (files.length === 0 || !outputPath) return;
     setLoading(true);
@@ -134,10 +167,11 @@ export const MarkdownToPDFTool: React.FC = () => {
       finalPath += '.pdf';
     }
 
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
       const baseUrl = await getApiBaseUrl();
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60000);
+      timeout = setTimeout(() => controller.abort(), 600000);
       const res = await fetch(`${baseUrl}/api/markdown/to-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -196,9 +230,6 @@ export const MarkdownToPDFTool: React.FC = () => {
         }),
         signal: controller.signal,
       });
-      clearTimeout(timeout);
-      setLoading(false);
-
       if (res.ok) {
         setLastOutputPath(finalPath);
         setStatus({ type: 'success', message: '✅ تم إنشاء ملف PDF بنجاح!' });
@@ -213,11 +244,13 @@ export const MarkdownToPDFTool: React.FC = () => {
         setStatus({ type: 'error', message: errMsg });
       }
     } catch (e) {
-      setLoading(false);
       const msg = e instanceof Error && e.name === 'AbortError'
-        ? 'انتهت مهلة الطلب — تأكد من أن الخادم يعمل'
+        ? 'تجاوز التحويل الحد الزمني (10 دقائق). جرّب ملفات أقل أو أعد المحاولة.'
         : 'تعذر الاتصال بالخادم';
       setStatus({ type: 'error', message: msg });
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      setLoading(false);
     }
   };
 
@@ -254,7 +287,7 @@ export const MarkdownToPDFTool: React.FC = () => {
         <section className="space-y-4">
           <MultiFileInput
             values={files}
-            onChange={setFiles}
+            onChange={handleFilesChange}
             label="1. اختر ملفات Markdown"
             placeholder="اسحب ملفات .md هنا أو انقر للاختيار"
             accept=".md"
@@ -295,7 +328,7 @@ export const MarkdownToPDFTool: React.FC = () => {
             value={outputPath}
             onChange={setOutputPath}
             label="2. مسار الملف الناتج"
-            placeholder="اختر مكان الحفظ..."
+            placeholder="تم اقتراح مسار بجانب أول ملف — اختر مكانًا آخر عند الحاجة"
             accept=".pdf"
             isSave
             filterName="PDF Files"
@@ -326,6 +359,16 @@ export const MarkdownToPDFTool: React.FC = () => {
           <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-5 pb-4">
             {activeTab === 'basic' && (
               <>
+                <div className="space-y-2 max-w-md">
+                  <label className="block text-sm font-semibold text-primary">تهيئة سريعة</label>
+                  <select onChange={(e) => applyPreset(e.target.value)} defaultValue="" className={inputBase}>
+                    <option value="" disabled>اختر إعدادًا جاهزًا لتقليل التعديلات اليدوية</option>
+                    <option value="arabic-reading">قراءة عربية مريحة</option>
+                    <option value="compact">نسخة مختصرة موفرة للصفحات</option>
+                    <option value="english">مستند باللغة الإنجليزية</option>
+                  </select>
+                  <p className="text-xs text-secondary">يمكنك تعديل أي خيار بعد اختيار التهيئة.</p>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <label className="block text-sm font-semibold text-primary">حجم الصفحة</label>

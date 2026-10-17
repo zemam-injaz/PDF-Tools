@@ -1,29 +1,85 @@
-# Project Status
+# حالة المشروع
 
-Last reviewed: 2026-10-11
+آخر مراجعة: 2026-10-11
 
-## Current state
+## الحالة الراهنة
 
-Matn is an actively developed Tauri + React desktop PDF workspace with a Python FastAPI/PyMuPDF backend. The repository includes PDF manipulation tools, a book library, reading-related tools, bookmark operations, annotation storage, directory scanning, and annotation export/burn workflows.
+مَتن تطبيق مكتبي نشِط مبني على Tauri + React مع خادم Python FastAPI/PyMuPDF. يشمل المستودع أدوات معالجة PDF ومكتبة كتب وأدوات قراءة وعمليات فواصل مرجعية وتخزين تعليقات وفحص مجلدات وسير عمل تصدير/حرق التعليقات.
 
-## Reader baseline
+## خط أساس القارئ
 
-- `react-pdf` / PDF.js renders the document and exposes text and native annotation layers.
-- `InteractivePDFViewer` currently provides zoom, fullscreen, page rendering, and app-stored point annotations (text, dot, timestamp).
-- `PDFPageRenderer` currently composes each page with an app overlay.
-- Existing reader concerns to address: all pages are mounted together, page/layout navigation is limited, and the overlay may intercept reading interactions when no annotation tool is active.
+- `react-pdf` / PDF.js يعرض المستند ويكشف طبقتي النص والتعليقات الأصلية.
+- `InteractivePDFViewer` يوفّر حاليًا التقريب وملء الشاشة وعرض الصفحات وتعليقات مخزّنة داخل التطبيق (نص، نقطة، طابع زمني).
+- `PDFPageRenderer` يركّب كل صفحة مع طبقة تعليقات التطبيق.
+- مشكلات القارئ الحالية الواجب معالجتها: **تُشغَّل كل الصفحات معًا** دون افتراضية، والتنقّل بين الصفحات/التخطيطات محدود، وقد تعترض طبقة التعليقات تفاعلات القراءة عند عدم تفعيل أداة تعليق.
+- تُمرَّر `width` و`scale` معًا إلى `Page`؛ يجب حلّ مصدر الحجم الواحد قبل الافتراضية لضمان محاذاة اللوحة وطبقة النص والطبقة الأصلية وطبقات مَتن.
+- عامل PDF.js يُحمَّل من CDN، وهو غير مناسب للعمل دون اتصال.
 
-## Comments baseline
+## خط أساس التعليقات
 
-- `CommentsTool` scans PDFs and reads native PDF annotations for listing/export workflows.
-- Interactive reader annotations are stored separately in the local SQLite database by `book_id`.
-- Current app-stored annotation records contain page, normalized x/y, type, JSON data, and creation time. Passage quotes, text context, replies, and resolved state are not currently part of the base model.
-- Treat native PDF annotations and app-stored notes as separate sources in the UI and migration strategy.
+- `CommentsTool` يفحص ملفات PDF ويقرأ التعليقات الأصلية لسير عمل العرض/التصدير.
+- تعليقات القارئ التفاعلي تُخزَّن منفصلة في قاعدة SQLite المحلية حسب `book_id`.
+- سجلات تعليقات مَتن الحالية تحتوي: الصفحة، إحداثيات `x/y` معيارية، النوع، بيانات JSON، ووقت الإنشاء. الاقتباسات النصية والسياق النصي والردود وحالة «تم الحل» ليست جزءًا من النموذج الأساسي بعد.
+- يجب التعامل مع تعليقات PDF الأصلية وملاحظات التطبيق كمصدرين منفصلين في الواجهة واستراتيجية الترحيل.
+- القارئ يُفتح بمعرّف كتاب رقمي (`book_id`)، بينما ماسح التعليقات يعمل بمسار الملف فقط؛ هذا تعارض في الهوية يجب حلّه بمُعرّف مستند قوي (بصمة)، وليس باسم الملف وحده.
 
-## Current focus
+## التركيز الحالي
 
-Improve the reader and comment experience in phases: reader performance and interactions, navigation, passage-based comments, stable persistence, and portable export. See [REVIEW_ENHANCEMENTS_PLAN.md](REVIEW_ENHANCEMENTS_PLAN.md).
+تحسين تجربة القارئ والتعليقات على مراحل: أداء القارئ وتفاعلاته، الملاحة، التعليقات المرتبطة بالمقاطع، التثبيت المستقر للروابط، ثم التصدير المحمول. راجع [REVIEW_ENHANCEMENTS_PLAN.md](REVIEW_ENHANCEMENTS_PLAN.md). وللخطة الاستراتيجية لرفع جودة التحرير والتعليق (الهندسة بفضاء PDF، الهوية بالبصمة، النموذج الموحّد) راجع [plans/pdf_editing_comments_strategic_report.md](plans/pdf_editing_comments_strategic_report.md).
 
-## Repository state note
+## ملاحظة عن حالة المستودع
 
-The working tree may contain substantial user changes unrelated to reader work. Inspect `git status` before edits and preserve those changes. Update this status file when a meaningful milestone is completed; do not treat this snapshot as a guarantee that every listed feature is currently bug-free.
+قد تحتوي شجرة العمل على تغييرات كبيرة للمستخدم غير مرتبطة بعمل القارئ. افحص `git status` قبل التعديل وحافظ على تلك التغييرات. حدِّث ملف الحالة هذا عند إنجاز معلم معتبر؛ ولا تعتبر هذه اللقطة ضمانًا بأن كل ميزة مذكورة خالية من الأخطاء حاليًا.
+
+## ما تم تنفيذه (2026-10-11)
+
+نُفّذت تحسينات القارئ والتعليقات على المراحل 1–5 في الكود (دون إيداع):
+
+- **المرحلة 1 — أساس القارئ:** حلّ تعارض `width`/`scale` (مصدر حجم واحد مع `scale` وحاوية `fit-content`)؛ افتراضية نافذية في العرض المستمر (مركّبة الصفحات المرئية ±2 فقط مع عناصر بديلة خفيفة لكل الصفحات)؛ تخطيطات: مستمر/صفحة واحدة/صفحتان؛ تقريب مع ملاءمة العرض/الصفحة؛ رقم الصفحة والانتقال المباشر؛ الحفاظ على الموضع عبر تغيير التقريب/التخطيط؛ حفظ التفضيلات وآخر صفحة في `src/lib/readerPrefs.ts` عبر `appStorage`؛ إصلاح التصادم: طبقة التعليقات لا تلتقط المؤشر إلا عند تفعيل أداة نقطة، وعند عدم التفعيل يصبح تحديد النص ممكنًا مع بقاء عناصر التعليقات قابلة للنقر.
+- **المرحلة 2 — الملاحة:** شريط جانبي (`ReaderSidebar.tsx`) بتبويبي مصغّرات وفهرس مع مزامنة الصفحة الحالية وتراتب الفواصل وبديل واضح عند غياب الفهرس.
+- **المرحلة 3 — تعليقات المقاطع:** أدوات تظليل/تسطير/ملاحظة مبنية على تحديد النص مع المستطيلات؛ لوحة `CommentsPanel.tsx` تفصل ملاحظات مَتن عن تعليقات PDF الأصلية؛ الانتقال إلى المقطع وإبرازه؛ رد (`data.replies`) وحالة «تم الحل» (`data.resolved`)؛ الحفاظ على النص/النقطة/الطابع الزمني والتراجع/الإعادة.
+- **المرحلة 4 — التثبيت والتوافق:** تخزين الصفحة والاقتباس والسياق والمستطيلات المعيارية داخل `data` دون تغيير المخطط؛ عرض بديل للتعليقات القديمة (نقطة) عند غياب `rects`؛ حماية عمليات الملف المفقود بمعالجة أخطاء.
+- **المرحلة 5 — التصدير والتنقيح:** وضعان للتصدير في `AnnotationModifierService` — `native` (عناصر تعليق أصلية، الافتراضي) و`flatten` (دمج في المحتوى)، عبر `/api/annotations/burn` بحقل `mode`؛ زرّان في شريط الأدوات؛ استبدال `alert()`/`confirm()` بإشعارات؛ إزالة سجلات الطرفية من مسار القارئ.
+
+### التحقق المُجرى
+
+- `npx tsc --noEmit -p tsconfig.app.json` — نجح دون أخطاء.
+- `python -m py_compile python-server/services/annotation_modifier_service.py python-server/server.py` — نجح.
+- لم تُشغَّل اختبارات آلية (لم تُطلب) ولم يُختبر السلوك يدويًا في التطبيق.
+
+### قيود معروفة ومتابعة
+
+- هوية المستند (البصمة D3) لم تُنفّذ بعد؛ ما زال الربط بـ `book_id` للملاحظات و`file_path` لاستخراج التعليقات الأصلية والفواصل. الملف المنقول/المتغيّر لا يُعاد ربطه تلقائيًا.
+- عامل PDF.js ما زال يُحمَّل من CDN (D6 مؤجّل).
+- التحقق من ترتيب تحديد النص العربي المختلط وRTL يحتاج اختبارًا يدويًا.
+- ارتفاعات العناصر البديلة مقدّرة من مقاس الصفحة الأولى؛ اختلاف أحجام الصفحات قد يُحدث فجوات طفيفة في العرض المستمر.
+- تخطيط الصفحتين يعرض الصفحة الحالية والتالية دائمًا (وليس نشرًا فعليًا حسب التماثل).
+- التصدير الأصلي للنص العربي في المربعات النصية محدود بخط `helv` (قيد قائم في PyMuPDF).
+- المصغّرات تستخدم `Document` متداخلًا (إعادة تحليل) وقد تحتاج تحسينًا لاحقًا.
+- ردود التعليقات وحالة الحل تُخزَّن داخل `data.resolved`/`data.replies` (بدون أعمدة جديدة).
+
+## مراجعة وتحسين لاحقة (2026-10-11)
+
+مراجعة نقدية للتنفيذ عبر المراحل 1–5 أضافت/أصلحت:
+
+- **إصلاح استعادة الموضع الأولي:** صار مرساة التمرير تنتظر تركيب الصفحة ومعرفة عدد الصفحات/مقاسها بدلًا من إسقاطها قبل تحميل المستند.
+- **اختصارات لوحة المفاتيح:** `PageDown/ArrowLeft` = التالي، `PageUp/ArrowRight` = السابق، `Home/End` = أول/آخر صفحة، مع تجاهلها أثناء الكتابة في الحقول (واعية بـ RTL).
+- **تقليل إعادة الرسم:** تغليف `PDFPageRenderer` بـ `React.memo` وتثبيت معالجات الأحداث عبر `useCallback`، فلم تبقَ الصفحات المركّبة تُعاد عند تغيّر الصفحة الحالية فقط.
+- **شريط تحذير غير حاجب** عند تعذّر قراءة الفهرس أو استخراج التعليقات الأصلية (ملف مفقود/متغيّر) بدل الابتلاع الصامت.
+- **الملاحة من التعليقات الأصلية:** النقر على تعليق PDF أصلي في اللوحة ينقل إلى صفحته.
+- **تحسين أداء المصغّرات** عبر `content-visibility: auto`.
+
+أُعيد تشغيل `tsc --noEmit` بنجاح بعد هذه المراجعة.
+
+## إصلاحات بعد الاختبار الميداني (2026-10-11)
+
+- **تعذّر حفظ/تحميل التعليقات (401 Unauthorized):** كان `annotationApi` يستخدم `fetch` مباشرًا دون ترويسة `X-Local-API-Token` التي يشترطها الخادم المحلي. صار يستخدم `localApiFetch` (الذي يضيف رمز الجلسة)، فأصلح كل عمليات التعليقات والتصدير.
+- **بطء فتح كل كتاب:** كان عامل PDF.js يُحمَّل من CDN عند كل فتح؛ نُقل إلى حزمة محلية عبر اسم بديل في `vite.config.ts`، ويُصدَّر الآن ضمن الأصول (`dist/assets/pdf.worker.min-*.mjs`). صار العامل يعمل بلا شبكة. استُخدم `new URL(..., import.meta.url)` بدل `?url` لأن الأخير كسر مُحسِّن اعتماديات Vite في وضع التطوير (`tauri dev`).
+- **تقليل العمل عند الفتح:** لم يبقَ استخراج الفهرس ولا التعليقات الأصلية يعملان عند كل فتح؛ يُؤجَّلان حتى يُفتح الشريط الجانبي أو لوحة التعليقات (مع تخزين مؤقت وتحميل مرة واحدة للملف).
+- تحقُّق: نجح `vite build` (أُصدِر العامل محليًا) ونجح فحص الأنواع لكل من التطبيق و`vite.config.ts`.
+
+## سجل الإنجاز
+
+- 2026-10-11: بدأت مراجعة Markdown إلى PDF؛ أُصلحت حدود الفصول لتتبع الملفات بدلًا من فواصل Markdown الأفقية، وأضيف اقتراح للمسار والعنوان وقوالب تخطيط سريعة ومهلة أطول، وهُرّبت النصوص الديناميكية، وعُطّل JavaScript في صفحة الطباعة، وأضيف تحقق لخيار الصفحة والأبعاد والألوان مع أخطاء 400 واضحة. أُضيفت [خطة تحليل وتحسين Markdown إلى PDF](plans/markdown_to_pdf_improvement_plan.md) بالمراحل ومعايير القبول. لم تُشغّل الاختبارات.
+- 2026-10-11: أُعدّت مجموعة وثائق المشروع وأُعيدت مراجعة خطة تحسين القارئ والتعليقات. لم يبدأ تنفيذ الكود بعد.
+- 2026-10-11: نُفّذت المراحل 1–5 في الكود مع نجاح فحص الأنواع (`tsc`) وترجمية Python، دون إيداع، ومع قيود موثّقة أعلاه.
