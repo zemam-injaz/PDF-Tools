@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { getApiBaseUrl } from '../../lib/api';
+import { localApiFetch } from '../../lib/api';
 import { FolderOpen, FileText, ArrowRight, CheckCircle, AlertCircle, X, FileImage, Settings, BookOpen, PanelTop, Palette, Lock } from 'lucide-react';
 import { FileInput, MultiFileInput } from '../ui/FileInput';
 import { openPath } from '../../lib/utils';
@@ -52,6 +52,8 @@ const DEFAULT_COLORS = {
   tocColor: '#374151',
 };
 
+const DEFAULT_BRIEFINGS_EXPORT_DIR = String.raw`F:\Broswer Extensions\nlm-data\backend\exports`;
+
 export const MarkdownToPDFTool: React.FC = () => {
   const { checkAccess } = useSubscription();
   const [showPricing, setShowPricing] = useState(false);
@@ -64,6 +66,11 @@ export const MarkdownToPDFTool: React.FC = () => {
 
   const [files, setFiles] = useState<string[]>([]);
   const [outputPath, setOutputPath] = useState('');
+  const [briefingInputDir, setBriefingInputDir] = useState(DEFAULT_BRIEFINGS_EXPORT_DIR);
+  const [briefingOutputDir, setBriefingOutputDir] = useState(`${DEFAULT_BRIEFINGS_EXPORT_DIR}\\PDF`);
+  const [briefingLoading, setBriefingLoading] = useState(false);
+  const [briefingStatus, setBriefingStatus] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
+  const [briefingResults, setBriefingResults] = useState<Array<{ title: string; status: string; output_path?: string; error?: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
   const [status, setStatus] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
@@ -90,7 +97,8 @@ export const MarkdownToPDFTool: React.FC = () => {
   const [keywords, setKeywords] = useState('');
   const [publisher, setPublisher] = useState('');
   const [includeToc, setIncludeToc] = useState(false);
-  const [coverPage, setCoverPage] = useState(false);
+  const [coverPage, setCoverPage] = useState(true);
+  const [brandPageEnabled, setBrandPageEnabled] = useState(true);
   const [chapterBreaks, setChapterBreaks] = useState(true);
   const [bookmarksEnabled, setBookmarksEnabled] = useState(true);
 
@@ -99,7 +107,7 @@ export const MarkdownToPDFTool: React.FC = () => {
   const [headerText, setHeaderText] = useState('');
   const [headerAlign, setHeaderAlign] = useState('center');
   const [footerEnabled, setFooterEnabled] = useState(true);
-  const [footerText, setFooterText] = useState('Matn — Smart PDF Workspace by Zemam Apps');
+  const [footerText, setFooterText] = useState('Matn PDF  •  zemamapps.com  •  manhaji.app');
   const [footerAlign, setFooterAlign] = useState('center');
   const [footerPageNumbers, setFooterPageNumbers] = useState(true);
 
@@ -169,10 +177,9 @@ export const MarkdownToPDFTool: React.FC = () => {
 
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
-      const baseUrl = await getApiBaseUrl();
       const controller = new AbortController();
       timeout = setTimeout(() => controller.abort(), 600000);
-      const res = await fetch(`${baseUrl}/api/markdown/to-pdf`, {
+      const res = await localApiFetch('/api/markdown/to-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -195,8 +202,10 @@ export const MarkdownToPDFTool: React.FC = () => {
           subject: subject || undefined,
           keywords: keywords || undefined,
           publisher: publisher || undefined,
+          lang: direction === 'rtl' ? 'ar' : 'en',
           include_toc: advancedEnabled(includeToc),
           cover_page: advancedEnabled(coverPage),
+          brand_page_enabled: brandPageEnabled,
           cover_bg_type: coverBgType,
           cover_bg_color: coverBgColor,
           cover_gradient_from: coverGradientFrom,
@@ -207,7 +216,7 @@ export const MarkdownToPDFTool: React.FC = () => {
           bookmarks_enabled: advancedEnabled(bookmarksEnabled),
           // Header/Footer
           header_enabled: advancedEnabled(headerEnabled),
-          header_text: headerText || undefined,
+          header_text: headerText || (title ? `ملخص: ${title}` : 'مَتن PDF'),
           header_align: headerAlign,
           footer_enabled: advancedEnabled(footerEnabled),
           footer_text: footerText || undefined,
@@ -254,6 +263,53 @@ export const MarkdownToPDFTool: React.FC = () => {
     }
   };
 
+  const handleBriefingFolderChange = (path: string) => {
+    setBriefingInputDir(path);
+    if (path) {
+      const separator = path.includes('\\') ? '\\' : '/';
+      setBriefingOutputDir(`${path.replace(/[\\/]+$/, '')}${separator}PDF`);
+    } else {
+      setBriefingOutputDir('');
+    }
+    setBriefingResults([]);
+    setBriefingStatus({ type: '', message: '' });
+  };
+
+  const handleBriefingsConvert = async () => {
+    if (!briefingInputDir || !briefingOutputDir) return;
+    setBriefingLoading(true);
+    setBriefingResults([]);
+    setBriefingStatus({ type: '', message: 'جاري فحص مجلدات التصدير وتحويل الملخصات...' });
+    try {
+      const response = await localApiFetch('/api/markdown/briefings-to-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input_dir: briefingInputDir,
+          output_dir: briefingOutputDir,
+          page_size: pageSize,
+          font_family: fontFamily,
+          body_size: bodySize,
+          line_height: lineHeight,
+          include_toc: advancedEnabled(includeToc),
+          cover_page: true,
+          brand_page_enabled: brandPageEnabled,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || 'تعذر تحويل مجلدات الملخصات');
+
+      setBriefingResults(result.results || []);
+      const skippedCount = result.skipped?.length || 0;
+      const message = `تم إنشاء ${result.converted_count} ملف PDF${result.failed_count ? `، وتعذر إنشاء ${result.failed_count}` : ''}${skippedCount ? `، وتخطي ${skippedCount} مجلدًا بلا ملفات Markdown` : ''}.`;
+      setBriefingStatus({ type: result.failed_count ? 'error' : 'success', message });
+    } catch (error) {
+      setBriefingStatus({ type: 'error', message: error instanceof Error ? error.message : 'تعذر الاتصال بالخادم' });
+    } finally {
+      setBriefingLoading(false);
+    }
+  };
+
   const removeFile = (index: number) => {
     setFiles(files.filter((_, i) => i !== index));
   };
@@ -273,6 +329,14 @@ export const MarkdownToPDFTool: React.FC = () => {
         </div>
       </div>
 
+      <div className="mb-6 rounded-xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white px-4 py-3 text-sm text-secondary">
+        <span className="font-semibold text-primary">مَتن PDF</span>
+        <span> · من أدوات </span>
+        <a className="font-medium text-amber-700 hover:underline" href="https://zemamapps.com/" target="_blank" rel="noreferrer">Zemam Apps · zemamapps.com</a>
+        <span> — </span>
+        <a className="font-medium text-amber-700 hover:underline" href="https://manhaji.app/" target="_blank" rel="noreferrer">manhaji.app</a>
+      </div>
+
       {!hasAdvanced && (
         <div className="mb-6 flex items-center justify-between gap-4 bg-gradient-to-l from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-5 py-4">
           <div className="flex items-center gap-3 text-sm text-amber-800">
@@ -284,6 +348,47 @@ export const MarkdownToPDFTool: React.FC = () => {
       )}
 
       <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+        <section className="shrink-0 rounded-xl border border-indigo-200 bg-gradient-to-l from-indigo-50/70 to-white p-4 space-y-4">
+          <div>
+            <h3 className="font-bold text-primary">تحويل دفاتر التصدير إلى ملفات PDF</h3>
+            <p className="mt-1 text-xs text-secondary">يُنشأ PDF مستقل لكل مجلد Briefings يحتوي على ملفات Markdown. يُنظّف اسم المادة من الشرطات السفلية وتاريخ التصدير، ثم يُستخدم عنوانًا واسمًا للملف.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FileInput
+              value={briefingInputDir}
+              onChange={handleBriefingFolderChange}
+              label="مجلد exports"
+              placeholder={'مثال: F:\\Broswer Extensions\\nlm-data\\backend\\exports'}
+              isDirectory
+            />
+            <FileInput
+              value={briefingOutputDir}
+              onChange={setBriefingOutputDir}
+              label="حفظ ملفات PDF في"
+              placeholder="سيُستخدم مجلد PDF داخل مجلد exports"
+              isDirectory
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button onClick={handleBriefingsConvert} disabled={!briefingInputDir || !briefingOutputDir || briefingLoading} className="btn btn-primary flex items-center gap-2 disabled:opacity-50">
+              {briefingLoading ? <span className="animate-spin">◌</span> : <FileText size={16} />}
+              تحويل كل مجلدات Briefings
+            </button>
+            {briefingStatus.message && <div className={`flex items-center gap-2 text-sm ${briefingStatus.type === 'error' ? 'text-red-600' : briefingStatus.type === 'success' ? 'text-green-700' : 'text-secondary'}`}>
+              {briefingStatus.type === 'error' ? <AlertCircle size={16} /> : briefingStatus.type === 'success' ? <CheckCircle size={16} /> : null}
+              {briefingStatus.message}
+            </div>}
+            {briefingResults.some((result) => result.status === 'success') && briefingOutputDir && <button onClick={() => openPath(briefingOutputDir)} className="text-sm font-semibold text-indigo-700 hover:underline">فتح مجلد النتائج</button>}
+          </div>
+          {briefingResults.length > 0 && <div className="max-h-28 overflow-y-auto rounded-lg bg-white/80 p-2 text-xs space-y-1">
+            {briefingResults.map((result, index) => <div key={`${result.title}-${index}`} className="flex gap-2">
+              <span className={result.status === 'success' ? 'text-green-700' : 'text-red-600'}>{result.status === 'success' ? '✓' : '!'}</span>
+              <span className="font-medium">{result.title}</span>
+              {result.error && <span className="text-red-600">— {result.error}</span>}
+            </div>)}
+          </div>}
+        </section>
+
         <section className="space-y-4">
           <MultiFileInput
             values={files}
@@ -494,6 +599,10 @@ export const MarkdownToPDFTool: React.FC = () => {
                     <span className="text-sm font-semibold text-primary flex items-center gap-1.5">
                       إنشاء إشارات للملفات {!hasAdvanced && <Lock size={12} className="text-amber-500" />}
                     </span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer bg-white border border-amber-200 rounded-lg p-3 md:col-span-2">
+                    <input type="checkbox" checked={brandPageEnabled} onChange={(e) => setBrandPageEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500" />
+                    <span className="text-sm font-semibold text-primary">إضافة صفحة ختامية أنيقة بروابط مَتن PDF ومنهجي وتطبيقات زمام</span>
                   </label>
                 </div>
 

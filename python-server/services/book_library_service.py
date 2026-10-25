@@ -2,6 +2,7 @@
 import os
 import sqlite3
 import base64
+import hashlib
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 import fitz  # PyMuPDF
@@ -43,7 +44,8 @@ def init_database():
             file_size INTEGER DEFAULT 0,
             date_added TEXT NOT NULL,
             last_opened TEXT,
-            status TEXT DEFAULT 'To Read'
+            status TEXT DEFAULT 'To Read',
+            document_uid TEXT
         )
     """)
     
@@ -70,6 +72,27 @@ def _migrate_database(conn):
         # Column missing, add it
         print("Migrating database: Adding 'status' column...")
         cursor.execute("ALTER TABLE books ADD COLUMN status TEXT DEFAULT 'To Read'")
+    if "document_uid" not in {row[1] for row in cursor.execute("PRAGMA table_info(books)")}:
+        cursor.execute("ALTER TABLE books ADD COLUMN document_uid TEXT")
+    for book_id, path in cursor.execute("SELECT id, file_path FROM books WHERE document_uid IS NULL").fetchall():
+        if os.path.isfile(path):
+            try:
+                cursor.execute("UPDATE books SET document_uid = ? WHERE id = ?", (document_fingerprint(path), book_id))
+            except OSError:
+                pass
+
+
+def document_fingerprint(path: str) -> str:
+    """A stored content fingerprint; native annotation saves do not change a book's identity."""
+    digest = hashlib.sha256()
+    size = os.path.getsize(path)
+    digest.update(str(size).encode("ascii"))
+    with open(path, "rb") as source:
+        digest.update(source.read(256 * 1024))
+        if size > 256 * 1024:
+            source.seek(max(0, size - 256 * 1024))
+            digest.update(source.read(256 * 1024))
+    return digest.hexdigest()
 
 
 # Initialize on import
@@ -158,9 +181,9 @@ class BookLibraryService:
         
         # Insert book
         cursor.execute("""
-            INSERT INTO books (file_path, title, total_pages, file_size, date_added)
-            VALUES (?, ?, ?, ?, ?)
-        """, (file_path, title, total_pages, file_size, date_added))
+            INSERT INTO books (file_path, title, total_pages, file_size, date_added, document_uid)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (file_path, title, total_pages, file_size, date_added, document_fingerprint(file_path)))
         
         book_id = cursor.lastrowid
         conn.commit()
@@ -377,6 +400,7 @@ class BookLibraryService:
         return {
             "id": row["id"],
             "file_path": row["file_path"],
+            "document_uid": row["document_uid"] if "document_uid" in row.keys() else None,
             "title": row["title"],
             "total_pages": row["total_pages"],
             "pages_read": row["pages_read"],

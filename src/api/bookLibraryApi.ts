@@ -8,6 +8,7 @@ import { localApiFetch } from '../lib/api';
 export interface Book {
   id: number;
   file_path: string;
+  document_uid?: string;
   title: string;
   total_pages: number;
   pages_read: number;

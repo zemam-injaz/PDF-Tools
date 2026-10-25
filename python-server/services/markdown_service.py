@@ -172,6 +172,7 @@ body {{
     margin: 0;
 }}
 
+
 /* Bookmark markers: tiny but searchable in the PDF */
 .bm-marker {{
     font-size: 1pt;
@@ -216,9 +217,25 @@ body {{
     position: absolute;
     top: 8mm; left: 8mm; right: 8mm; bottom: 8mm;
     border: 0.35mm solid {cover_accent_color};
-    border-radius: 3mm;
-    opacity: 0.55;
+    border-radius: 2mm;
+    opacity: 0.48;
+    z-index: 0;
 }}
+
+.cover-page::after {{
+    content: "";
+    position: absolute;
+    width: 110mm;
+    height: 110mm;
+    inset-inline-end: -45mm;
+    top: 25mm;
+    border: 0.4mm solid {cover_accent_color};
+    border-radius: 50%;
+    opacity: 0.16;
+    z-index: 0;
+}}
+
+.cover-content {{ position: relative; z-index: 1; }}
 
 /* Accent bands */
 .cover-page .cover-band {{
@@ -231,13 +248,21 @@ body {{
 .cover-page .cover-band.bottom {{ bottom: 0; }}
 
 .cover-page .cover-title {{
-    font-size: 3em;
+    max-width: 155mm;
+    margin-inline: auto;
+    font-size: clamp(28pt, 3em, 40pt);
     font-weight: 800;
     color: {cover_text_color};
-    line-height: 1.5;
-    margin: 0 0 0.5em;
+    line-height: 1.55;
+    margin: 0 0 0.35em;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
 }}
+
+.cover-brandline {{ display: flex; align-items: center; justify-content: center; gap: 3mm; margin: 0 0 22mm; text-align: start; }}
+.cover-brand-mark {{ width: 12mm; height: 12mm; display: flex; align-items: center; justify-content: center; border: 0.4mm solid {cover_accent_color}; border-radius: 50%; color: {cover_accent_color}; font-size: 20pt; font-weight: 700; }}
+.cover-brand-name {{ display: block; color: {cover_text_color}; font-size: 12pt; font-weight: 700; }}
+.cover-brand-caption {{ display: block; margin-top: 0.5mm; color: {cover_text_color}; font: 6.5pt Arial, sans-serif; letter-spacing: 0.16em; opacity: 0.72; }}
+.cover-eyebrow {{ margin: 0 0 4mm; color: {cover_accent_color}; font-size: 10pt; font-weight: 700; letter-spacing: 0.06em; }}
 
 .cover-page .cover-divider {{
     width: 34mm;
@@ -268,8 +293,34 @@ body {{
     color: {cover_text_color};
     opacity: 0.75;
     line-height: 1.8;
-    margin-top: 3em;
+    margin-top: 2.4em;
+    padding-top: 4mm;
+    border-top: 0.3mm solid {cover_accent_color};
 }}
+
+.cover-brand {{
+    position: absolute;
+    bottom: 15mm;
+    z-index: 1;
+    color: {cover_text_color};
+    font-size: 10pt;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    opacity: 0.9;
+}}
+.cover-brand span {{ display: block; margin-top: 1mm; font-size: 8pt; font-weight: 400; }}
+
+.brand-page {{ break-before: page; page-break-before: always; min-height: calc({cover_height_css} - 45mm); display: flex; align-items: center; justify-content: center; direction: inherit; text-align: center; }}
+.brand-card {{ width: 100%; padding: 18mm 14mm; border: 0.4mm solid #e2e8f0; border-radius: 6mm; background: linear-gradient(145deg, #f8fafc 0%, #ffffff 64%, #eff6ff 100%); }}
+.brand-kicker {{ margin: 0 0 5mm; color: #64748b; font-size: 10pt; font-weight: 700; letter-spacing: 0.08em; }}
+.brand-title {{ margin: 0 0 3mm; color: #0f172a; font-size: 25pt; line-height: 1.35; }}
+.brand-copy {{ margin: 0 auto 10mm; max-width: 130mm; color: #475569; font-size: 12pt; line-height: 1.8; }}
+.brand-links {{ display: grid; gap: 4mm; margin: 0 auto; max-width: 125mm; }}
+.brand-link {{ display: block; padding: 5mm 7mm; border: 0.3mm solid #dbeafe; border-radius: 3mm; background: #ffffff; color: #1d4ed8; text-decoration: none; }}
+.brand-link strong {{ display: block; color: #0f172a; font-size: 13pt; }}
+.brand-link span {{ display: block; color: #475569; font-size: 9pt; }}
+.brand-signoff {{ margin: 11mm 0 0; color: #64748b; font-size: 9pt; }}
+.brand-signoff strong {{ color: #0f172a; }}
 
 /* Headings */
 h1, h2, h3, h4, h5, h6 {{
@@ -659,6 +710,7 @@ class MarkdownService:
         # Content structure
         'include_toc': False,
         'cover_page': False,
+        'brand_page_enabled': True,
         'chapter_breaks': True,
         'bookmarks_enabled': True,
         # Cover page styling
@@ -682,7 +734,7 @@ class MarkdownService:
         'header_align': 'center',
         # Footer
         'footer_enabled': True,
-        'footer_text': 'Matn — Smart PDF Workspace by Zemam Apps',
+        'footer_text': 'Matn PDF  •  zemamapps.com  •  manhaji.app',
         'footer_page_numbers': True,
         'footer_align': 'center',
         'page_number_format': '{n}',
@@ -740,54 +792,26 @@ class MarkdownService:
         font_family = f"'{selected_font}', 'Noto Naskh Arabic', 'Segoe UI', 'Arial', sans-serif"
 
         if kind == 'header':
-            align = opts.get('header_align', 'center')
             color = opts.get('header_color', '#4b5563')
             text = html.escape(str(opts.get('header_text', '') or ''))
             if not text:
                 return '<div></div>'
-            font_size = max(7, int(opts.get('body_size', 12) * 0.65))
-            justify = {'left': 'flex-start', 'center': 'center', 'right': 'flex-end'}.get(align, 'center')
-            return f"""<div style="width:100%;font-size:{font_size}pt;font-family:{font_family};color:{color};direction:{direction};text-align:{align};display:flex;justify-content:{justify};align-items:center;padding:0 10mm;">
-                <span>{text}</span>
+            return f"""<div style="width:100%;font-size:8pt;font-family:{font_family};color:{color};direction:{direction};display:flex;justify-content:space-between;align-items:center;padding:1.5mm 10mm 2mm;border-bottom:0.35px solid #dbe2ea;-webkit-print-color-adjust:exact;">
+                <span style="font-weight:600;">{text}</span>
+                <span style="color:#a47d3c;font-family:Arial,sans-serif;font-size:6.5pt;font-weight:700;letter-spacing:0.12em;">MATN PDF</span>
             </div>"""
         else:
-            align = opts.get('footer_align', 'center')
             color = opts.get('footer_color', '#6b7280')
             pn_color = opts.get('page_number_color', '#6b7280')
             text = html.escape(str(opts.get('footer_text', '') or ''))
             page_numbers = opts.get('footer_page_numbers', True)
-            font_size = max(7, int(opts.get('body_size', 12) * 0.6))
-
-            if align == 'center':
-                if text and page_numbers:
-                    center = f"{text} — <span class=\"pageNumber\" style=\"color:{pn_color};\"></span>"
-                elif text:
-                    center = text
-                elif page_numbers:
-                    center = f"<span class=\"pageNumber\" style=\"color:{pn_color};\"></span>"
-                else:
-                    return '<div></div>'
-                return f"""<div style="width:100%;font-size:{font_size}pt;font-family:{font_family};color:{color};direction:{direction};text-align:center;display:flex;justify-content:center;align-items:center;padding:0 10mm;">
-                    <span>{center}</span>
-                </div>"""
-            else:
-                left = ''
-                right = ''
-                if align == 'left':
-                    left = text if text else ''
-                    if page_numbers:
-                        right = f"<span class=\"pageNumber\" style=\"color:{pn_color};\"></span>"
-                else:  # right
-                    right = text if text else ''
-                    if page_numbers:
-                        left = f"<span class=\"pageNumber\" style=\"color:{pn_color};\"></span>"
-
-                if not left and not right:
-                    return '<div></div>'
-                return f"""<div style="width:100%;font-size:{font_size}pt;font-family:{font_family};color:{color};direction:{direction};display:flex;justify-content:space-between;align-items:center;padding:0 10mm;">
-                    <span>{left}</span>
-                    <span>{right}</span>
-                </div>"""
+            page_counter = f"<span style=\"color:{pn_color};font-weight:700;\"><span class=\"pageNumber\"></span><span style=\"padding:0 1mm;\">/</span><span class=\"totalPages\"></span></span>" if page_numbers else ''
+            if not text and not page_counter:
+                return '<div></div>'
+            return f"""<div style="width:100%;font-size:7pt;font-family:{font_family};color:{color};direction:{direction};display:flex;justify-content:space-between;align-items:center;padding:2mm 10mm 0;border-top:0.35px solid #dbe2ea;-webkit-print-color-adjust:exact;">
+                <span>{text}</span>
+                {page_counter}
+            </div>"""
 
     @staticmethod
     def convert_to_pdf(
@@ -1091,6 +1115,7 @@ class MarkdownService:
         if opts.get('include_toc'):
             toc_html = MarkdownService._generate_toc(md_text, opts)
 
+        brand_html = MarkdownService._build_brand_page(opts) if opts.get('brand_page_enabled', True) else ''
         cover_html = ''
         if opts.get('cover_page'):
             cover_html = MarkdownService._build_cover_page(opts)
@@ -1144,6 +1169,7 @@ class MarkdownService:
             'cover_html': cover_html,
             'toc_html': toc_html,
             'body_html': body_html,
+            'brand_html': brand_html,
             'bookmarks': bookmarks,
         }
 
@@ -1157,9 +1183,9 @@ class MarkdownService:
         if mode == 'cover':
             body = parts['cover_html']
         elif mode == 'content':
-            body = f"{parts['toc_html']}\n{parts['body_html']}"
+            body = f"{parts['toc_html']}\n{parts['body_html']}\n{parts.get('brand_html', '')}"
         else:
-            body = f"{parts['cover_html']}\n{parts['toc_html']}\n{parts['body_html']}"
+            body = f"{parts['cover_html']}\n{parts['toc_html']}\n{parts['body_html']}\n{parts.get('brand_html', '')}"
         return f"""<!DOCTYPE html>
 <html dir="{opts['direction']}" lang="{html.escape(str(lang), quote=True)}">
 <head>
@@ -1218,7 +1244,12 @@ class MarkdownService:
         publisher = html.escape(str(opts.get('publisher', '') or ''))
         date_str = datetime.now().strftime('%Y-%m-%d')
 
-        parts = []
+        parts = [
+            '<div class="cover-brandline"><span class="cover-brand-mark">م</span>'
+            '<span><strong class="cover-brand-name">مَتن PDF</strong>'
+            '<small class="cover-brand-caption">MATN PDF · ZEMAM APPS</small></span></div>',
+            '<div class="cover-eyebrow">ملخص معرفي</div>',
+        ]
         if title:
             parts.append(f'<div class="cover-title">{title}</div>')
         if subtitle:
@@ -1235,12 +1266,49 @@ class MarkdownService:
         if meta_parts:
             parts.append(f'<div class="cover-meta">{" — ".join(meta_parts)}</div>')
 
+        parts.append('<div class="cover-brand">Matn PDF <span>by Zemam Apps · zemamapps.com</span></div>')
+
         return ('<div class="cover-page">\n'
                 '<div class="cover-band top"></div>\n'
-                '<div class="cover-band bottom"></div>\n'
                 '<div class="cover-content">\n'
                 + '\n'.join(parts) + '\n</div>\n'
                 '</div>\n')
+
+    @staticmethod
+    def _build_brand_page(opts: dict) -> str:
+        """Create a compact, clickable end card that points readers to the product sites."""
+        is_arabic = str(opts.get('lang', 'ar')).lower().startswith('ar')
+        if is_arabic:
+            kicker = 'صُنع بعناية باستخدام'
+            title = 'مَتن PDF'
+            copy = 'أُعجبك هذا الملف؟ اكتشف أدوات تساعدك على التعلّم، القراءة، وتنظيم ملفاتك.'
+            manhaji_label = 'منهجي · manhaji.app'
+            manhaji_copy = 'ابنِ مسارك… وتعلّم بمنهج.'
+            apps_label = 'تطبيقات زمام · zemamapps.com'
+            apps_copy = 'اكتشف مَتن PDF والمزيد من التطبيقات.'
+            signoff = 'من تطوير <strong>Zemam Apps</strong>'
+        else:
+            kicker = 'Thoughtfully created with'
+            title = 'Matn PDF'
+            copy = 'Enjoyed this document? Explore tools for learning, reading, and organizing your files.'
+            manhaji_label = 'Manhaji · manhaji.app'
+            manhaji_copy = 'Build your path and learn with structure.'
+            apps_label = 'Zemam Apps · zemamapps.com'
+            apps_copy = 'Discover Matn PDF and more apps.'
+            signoff = 'Made by <strong>Zemam Apps</strong>'
+
+        return f'''<section class="brand-page" aria-label="Matn PDF and Zemam Apps">
+  <div class="brand-card">
+    <p class="brand-kicker">{kicker}</p>
+    <h1 class="brand-title">{title}</h1>
+    <p class="brand-copy">{copy}</p>
+    <div class="brand-links">
+      <a class="brand-link" href="https://manhaji.app/"><strong>{manhaji_label}</strong><span>{manhaji_copy}</span></a>
+      <a class="brand-link" href="https://zemamapps.com/apps"><strong>{apps_label}</strong><span>{apps_copy}</span></a>
+    </div>
+    <p class="brand-signoff">{signoff} · <a href="https://zemamapps.com/">zemamapps.com</a></p>
+  </div>
+</section>'''
 
     @staticmethod
     def _generate_toc(md_text: str, opts: dict) -> str:
@@ -1275,8 +1343,10 @@ class MarkdownService:
             if opts.get('keywords'):
                 metadata['keywords'] = opts['keywords']
 
-            metadata['creator'] = opts.get('creator') or opts.get('publisher') or 'Matn PDF Workspace'
+            metadata['creator'] = opts.get('creator') or opts.get('publisher') or 'Matn PDF by Zemam Apps'
             metadata['producer'] = opts.get('producer') or 'Matn Markdown to PDF (Chromium)'
+            if not metadata.get('keywords'):
+                metadata['keywords'] = 'Matn PDF, Zemam Apps, zemamapps.com, manhaji.app'
             metadata['creationDate'] = datetime.now().strftime("D:%Y%m%d%H%M%S")
             metadata['modDate'] = datetime.now().strftime("D:%Y%m%d%H%M%S")
 

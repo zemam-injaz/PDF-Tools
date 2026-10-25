@@ -6,14 +6,85 @@ use std::process::{Command, Child, Stdio};
 use std::sync::Mutex;
 use std::path::{Component, Path, PathBuf};
 use std::net::TcpListener;
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 struct ServerProcess(Mutex<Option<Child>>);
 struct BackendPort(u16);
 struct BackendToken(String);
+struct ReaderProcess(Mutex<Option<Child>>);
+
+fn reader_executable(app: &tauri::AppHandle) -> Result<(PathBuf, bool), String> {
+    if cfg!(debug_assertions) {
+        let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("../qt_pdf_reader/pdf_reader.py");
+        if script.is_file() { return Ok((script, true)); }
+    }
+    let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
+    for path in [resource_dir.join("resources/qt_pdf_reader.exe"), resource_dir.join("qt_pdf_reader.exe")] {
+        if path.is_file() { return Ok((path, false)); }
+    }
+    Err("Qt reader executable is missing. Build qt_pdf_reader.exe before packaging Matn.".into())
+}
+
+fn send_reader(child: &mut Child, value: &serde_json::Value) -> Result<(), String> {
+    let input = child.stdin.as_mut().ok_or("Reader command pipe is closed")?;
+    writeln!(input, "{}", value).map_err(|e| e.to_string())?;
+    input.flush().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn launch_reader(app: tauri::AppHandle, state: tauri::State<ReaderProcess>,
+                 port: tauri::State<BackendPort>, token: tauri::State<BackendToken>,
+                 path: String, book_id: String) -> Result<(), String> {
+    let pdf = PathBuf::from(&path);
+    if !pdf.is_file() || pdf.extension().and_then(|s| s.to_str()).map(|s| !s.eq_ignore_ascii_case("pdf")).unwrap_or(true) {
+        return Err("The PDF file does not exist".into());
+    }
+    if book_id.parse::<u64>().is_err() { return Err("Invalid book ID".into()); }
+    let mut guard = state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(child) = guard.as_mut() {
+        if child.try_wait().map_err(|e| e.to_string())?.is_none() {
+            return send_reader(child, &serde_json::json!({"type":"open", "path":path, "book_id":book_id}));
+        }
+    }
+    let (executable, is_script) = reader_executable(&app)?;
+    let mut command = if is_script {
+        let mut c = Command::new("python"); c.arg(&executable); c
+    } else { Command::new(&executable) };
+    command.arg(&path).arg("--book-id").arg(&book_id)
+        .env("MATN_BACKEND_PORT", port.0.to_string())
+        .env("MATN_BACKEND_TOKEN", &token.0)
+        .stdin(Stdio::piped()).stdout(Stdio::piped());
+    #[cfg(target_os = "windows")]
+    if !cfg!(debug_assertions) { command.creation_flags(0x08000000); }
+    let mut child = command.spawn().map_err(|e| format!("Could not start Qt reader: {e}"))?;
+    let stdout = child.stdout.take().ok_or("Reader event pipe is closed")?;
+    std::thread::spawn(move || {
+        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+            if let Ok(event) = serde_json::from_str::<serde_json::Value>(&line) {
+                let _ = app.emit("matn-reader", event);
+            }
+        }
+        let _ = app.emit("matn-reader", serde_json::json!({"type":"closed"}));
+    });
+    *guard = Some(child);
+    Ok(())
+}
+
+#[tauri::command]
+fn reader_action(state: tauri::State<ReaderProcess>, action: String,
+                 page: Option<u32>, zoom: Option<f64>, visible: Option<bool>, query: Option<String>) -> Result<(), String> {
+    if !matches!(action.as_str(), "focus" | "minimize" | "close" | "goto" | "zoom" | "comments" | "filter_comments") {
+        return Err("Unsupported reader action".into());
+    }
+    if query.as_ref().is_some_and(|value| value.len() > 200) { return Err("Comment filter is too long".into()); }
+    let mut guard = state.0.lock().map_err(|e| e.to_string())?;
+    let child = guard.as_mut().ok_or("Reader is not running")?;
+    if child.try_wait().map_err(|e| e.to_string())?.is_some() { return Err("Reader has exited".into()); }
+    send_reader(child, &serde_json::json!({"type":action, "page":page, "zoom":zoom, "visible":visible, "query":query}))
+}
 
 /// Find an available port starting from the preferred port
 fn find_available_port(preferred: u16) -> u16 {
@@ -148,13 +219,14 @@ fn main() {
     println!("Selected backend port: {}", port);
     
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![open_in_explorer, get_backend_port, get_backend_token, read_app_file, write_app_file])
+        .invoke_handler(tauri::generate_handler![open_in_explorer, get_backend_port, get_backend_token, read_app_file, write_app_file, launch_reader, reader_action])
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .manage(BackendPort(port))
         .manage(BackendToken(backend_token))
+        .manage(ReaderProcess(Mutex::new(None)))
         .setup(move |app| {
             let resource_dir = app.path().resource_dir()
                 .unwrap_or_else(|_| std::env::current_dir().unwrap());
@@ -251,6 +323,12 @@ fn main() {
         .expect("error while running tauri application")
         .run(|app_handle, event| {
             if let tauri::RunEvent::Exit = event {
+                let reader_state = app_handle.state::<ReaderProcess>();
+                if let Some(mut reader) = reader_state.0.lock().unwrap().take() {
+                    // Let Qt ask about unsaved annotations. If the user keeps
+                    // that window open, leave it alive so their work is safe.
+                    let _ = send_reader(&mut reader, &serde_json::json!({"type":"close"}));
+                }
                 let state = app_handle.state::<ServerProcess>();
                 let mut child_guard = state.0.lock().unwrap();
                 if let Some(mut child) = child_guard.take() {

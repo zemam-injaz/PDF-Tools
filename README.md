@@ -6,6 +6,18 @@ Built with **Tauri + React + TypeScript** on the frontend and a **Python FastAPI
 
 ---
 
+## Native desktop reader
+
+In the Tauri desktop app, opening a library preview launches the PyQt6 reader in its own window. The library can bring it to the front, minimize or close it, jump to a page, and filter comments. The browser build continues to use the React PDF viewer.
+
+For development, run `python -m pip install -r qt_pdf_reader/requirements.txt`, then `npm run tauri dev`. The Qt script is launched from `qt_pdf_reader/pdf_reader.py`. The API session token is passed to the reader through its environment; no token is placed in the command line.
+
+For a Windows installer, run `build.bat`. It builds `pdf_server.exe` and `qt_pdf_reader.exe`, copies both into `src-tauri/resources/`, and then invokes Tauri. The Qt executable must retain standard input/output for the JSON line bridge, so `qt_pdf_reader/build_reader.py` builds a console subsystem binary and Tauri hides its console window when launching it.
+
+Saved native PDF annotations are mirrored into Matn's SQLite annotation records by the local API. Existing app-only notes are shown in the Qt comments dock and as overlays without being inserted into the PDF automatically. Qt uses an OpenGL viewport when available; set `MATN_DISABLE_OPENGL=1` if the display driver cannot support it. The Qt reader currently uses continuous page layout.
+
+---
+
 ## Features
 
 ### 📄 Core PDF Manipulation

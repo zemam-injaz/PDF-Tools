@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { 
   Search, Star, Grid, List, Plus,
   BookOpen, Trash2, FolderOpen, Edit3,
@@ -7,7 +7,11 @@ import {
   Database, LibraryBig
 } from 'lucide-react';
 import { bookLibraryApi, type Book, type AddBooksResult, type Annotation, type BookmarkItem } from '../../api/bookLibraryApi';
-import { InteractivePDFViewer } from '../viewer/InteractivePDFViewer';
+import { nativeReaderApi } from '../../api/nativeReaderApi';
+import { getActiveNativeBookId } from '../../lib/nativeReaderBridge';
+
+const InteractivePDFViewer = lazy(() => import('../viewer/InteractivePDFViewer')
+  .then(module => ({ default: module.InteractivePDFViewer })));
 
 // Tauri APIs - conditionally imported
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
@@ -200,6 +204,12 @@ export function BookLibraryTool() {
     showBookmarks: true,
     loadingBookmarks: false
   });
+  const [nativeReaderBook, setNativeReaderBook] = useState<Book | null>(null);
+  const [nativePage, setNativePage] = useState(1);
+  const [nativePageInput, setNativePageInput] = useState('1');
+  const [nativeChapter, setNativeChapter] = useState<string | null>(null);
+  const [nativeCommentsVisible, setNativeCommentsVisible] = useState(true);
+  const [nativeCommentQuery, setNativeCommentQuery] = useState('');
 
   const [progressDialog, setProgressDialog] = useState<{
     visible: boolean;
@@ -212,6 +222,59 @@ export function BookLibraryTool() {
   });
 
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const pendingNativeBook = useRef<Book | null>(null);
+
+  useEffect(() => {
+    if (!isTauri) return;
+    const activeId = getActiveNativeBookId();
+    if (activeId) {
+      void bookLibraryApi.getBook(Number(activeId)).then(setNativeReaderBook).catch(() => {});
+    }
+    let unlisten: (() => void) | undefined;
+    let disposed = false;
+    void nativeReaderApi.listen(event => {
+      if (event.type === 'closed' || (event.type === 'document_opened' && !event.book_id)) {
+        setNativeReaderBook(null);
+        pendingNativeBook.current = null;
+      }
+      if (event.type === 'open_cancelled') {
+        pendingNativeBook.current = null;
+      }
+      if (event.type === 'document_opened' && event.book_id && pendingNativeBook.current?.id === Number(event.book_id)) {
+        setNativeReaderBook(pendingNativeBook.current);
+        pendingNativeBook.current = null;
+      }
+      if (event.type === 'page_changed' && event.page) {
+        setNativePage(event.page);
+        setNativePageInput(String(event.page));
+        const page = event.page;
+        const id = Number(event.book_id);
+        if (Number.isInteger(id)) {
+          setBooks(previous => previous.map(book => book.id === id && page > book.pages_read
+            ? { ...book, pages_read: page, reading_percentage: book.total_pages ? (page / book.total_pages) * 100 : 0 }
+            : book));
+          setNativeReaderBook(previous => previous?.id === id && page > previous.pages_read
+            ? { ...previous, pages_read: page }
+            : previous);
+        }
+      }
+      if (event.type === 'chapter_changed') setNativeChapter(event.chapter_title || null);
+      if (event.type === 'comments_visibility_changed' && typeof event.visible === 'boolean')
+        setNativeCommentsVisible(event.visible);
+      if (event.type === 'document_saved') {
+        void loadBooks();
+        if (event.path) {
+          const savedPath = event.path;
+          void bookLibraryApi.extractAnnotations(savedPath).then(annotations => {
+            setCommentsDialog(previous => previous.visible && previous.book?.file_path === savedPath
+              ? { ...previous, annotations, loading: false }
+              : previous);
+          }).catch(error => console.warn('Could not refresh native comments:', error));
+        }
+      }
+    }).then(fn => { if (disposed) fn(); else unlisten = fn; });
+    return () => { disposed = true; unlisten?.(); };
+  }, []);
 
   // Load books on mount
   useEffect(() => {
@@ -326,6 +389,20 @@ export function BookLibraryTool() {
   };
 
   const handlePreviewBook = async (book: Book) => {
+    if (isTauri) {
+      try {
+        pendingNativeBook.current = book;
+        await nativeReaderApi.launch(book.file_path, String(book.id));
+      } catch (error) {
+        pendingNativeBook.current = null;
+        console.error('Native reader launch failed:', error);
+        showToast('error', `تعذّر فتح القارئ: ${String(error)}`);
+        return;
+      }
+      void bookLibraryApi.markOpened(book.id).catch(error =>
+        console.warn('Could not update last opened time:', error));
+      return;
+    }
     const url = await getAssetUrl(book.file_path);
     setPreviewDialog({
       visible: true,
@@ -553,6 +630,45 @@ export function BookLibraryTool() {
           </button>
         </div>
       )}
+
+      {nativeReaderBook && (
+        <div dir="rtl" className="fixed bottom-5 left-5 z-40 flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-white shadow-xl" aria-label="التحكم في القارئ الأصلي">
+          <span className="max-w-40 truncate text-sm" title={nativeReaderBook.title}>{nativeReaderBook.title}</span>
+          {nativeChapter && <span className="max-w-32 truncate text-xs text-slate-300" title={nativeChapter}>{nativeChapter}</span>}
+          <input
+            aria-label="رقم الصفحة"
+            className="w-14 rounded bg-white px-1 text-center text-slate-900"
+            type="number" min={1} max={nativeReaderBook.total_pages}
+            value={nativePageInput}
+            onChange={e => setNativePageInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                const page = Number(nativePageInput);
+                if (Number.isInteger(page) && page >= 1 && page <= nativeReaderBook.total_pages)
+                  void nativeReaderApi.action('goto', { page });
+              }
+            }}
+          />
+          <span className="text-xs text-slate-300">/ {nativeReaderBook.total_pages} · الآن {nativePage}</span>
+          <button className="rounded px-2 py-1 hover:bg-slate-700" onClick={() => void nativeReaderApi.action('focus')}>إظهار</button>
+          <button className="rounded px-2 py-1 hover:bg-slate-700" onClick={() => void nativeReaderApi.action('minimize')}>تصغير</button>
+          <button className="rounded px-2 py-1 hover:bg-slate-700" onClick={() => {
+            void nativeReaderApi.action('comments', { visible: !nativeCommentsVisible });
+            setNativeCommentsVisible(!nativeCommentsVisible);
+          }}>التعليقات</button>
+          <input
+            aria-label="تصفية التعليقات" placeholder="بحث التعليقات"
+            className="w-28 rounded bg-white px-2 py-1 text-sm text-slate-900"
+            value={nativeCommentQuery}
+            onChange={e => {
+              const query = e.target.value;
+              setNativeCommentQuery(query);
+              void nativeReaderApi.action('filter_comments', { query });
+            }}
+          />
+          <button className="rounded px-2 py-1 hover:bg-slate-700" onClick={() => void nativeReaderApi.action('close')}>إغلاق</button>
+        </div>
+      )}
       
       {/* Context Menu */}
       {contextMenu.visible && contextMenu.book && (
@@ -573,7 +689,11 @@ export function BookLibraryTool() {
 
           <div className="flex flex-col gap-1.5">
             <button
-              onClick={() => handleOpenBook(contextMenu.book!)}
+              onClick={() => {
+                const book = contextMenu.book!;
+                setContextMenu(prev => ({ ...prev, visible: false }));
+                void handlePreviewBook(book);
+              }}
               className="w-full flex items-center gap-3 px-3 py-2 text-right hover:bg-indigo-50 text-gray-700 rounded-lg transition-all duration-200 group"
             >
               <ExternalLink size={16} className="text-gray-500 group-hover:text-indigo-600" />
@@ -582,16 +702,9 @@ export function BookLibraryTool() {
 
             <button
               onClick={async () => {
-                const url = await getAssetUrl(contextMenu.book!.file_path);
-                setPreviewDialog({ visible: true, book: contextMenu.book, assetUrl: url, bookmarks: [], showBookmarks: true, loadingBookmarks: true });
+                const book = contextMenu.book!;
                 setContextMenu(prev => ({ ...prev, visible: false }));
-                // Fetch bookmarks
-                try {
-                  const result = await bookLibraryApi.extractBookmarks(contextMenu.book!.file_path);
-                  setPreviewDialog(prev => ({ ...prev, bookmarks: result.bookmarks, loadingBookmarks: false }));
-                } catch (e) {
-                  setPreviewDialog(prev => ({ ...prev, loadingBookmarks: false }));
-                }
+                await handlePreviewBook(book);
               }}
               className="w-full flex items-center gap-3 px-3 py-2 text-right hover:bg-cyan-50 text-gray-700 rounded-lg transition-all duration-200 group"
             >
@@ -1335,14 +1448,16 @@ export function BookLibraryTool() {
 
             {/* Content Area */}
             <div className="flex-1 flex overflow-hidden">
-              <InteractivePDFViewer
-                pdfPath={previewDialog.book.file_path}
-                bookId={previewDialog.book.id.toString()}
-                bookTitle={previewDialog.book.title}
-                readingCount={1} // Placeholder, should be fetched if needed
-                onClose={() => setPreviewDialog(prev => ({ ...prev, visible: false }))}
-                assetUrl={previewDialog.assetUrl}
-              />
+              <Suspense fallback={<div className="flex-1 grid place-items-center">جاري تحميل القارئ…</div>}>
+                <InteractivePDFViewer
+                  pdfPath={previewDialog.book.file_path}
+                  bookId={previewDialog.book.id.toString()}
+                  bookTitle={previewDialog.book.title}
+                  readingCount={1} // Placeholder, should be fetched if needed
+                  onClose={() => setPreviewDialog(prev => ({ ...prev, visible: false }))}
+                  assetUrl={previewDialog.assetUrl}
+                />
+              </Suspense>
             </div>
           </div>
         </div>

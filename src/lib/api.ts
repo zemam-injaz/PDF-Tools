@@ -217,7 +217,7 @@ export const api = {
     request<{ status: string; files?: string[]; task_id?: string }>('/api/split', 'POST', { input_path: inputPath, split_pages: splitPages, output_dir: outputDir, is_async: isAsync }),
     
   compress: (inputPath: string, outputPath: string, level: number, isAsync: boolean = false) =>
-    request<{ status: string; message: string; task_id?: string }>('/api/compress', 'POST', { input_path: inputPath, output_path: outputPath, compression_level: level, is_async: isAsync }),
+    request<{ status: string; message: string; task_id?: string; original_size?: number; compressed_size?: number }>('/api/compress', 'POST', { input_path: inputPath, output_path: outputPath, compression_level: level, is_async: isAsync }),
     
   extractImages: (inputPath: string, outputDir: string, isAsync: boolean = false) =>
     request<{ status: string; files?: string[]; task_id?: string }>('/api/extract-images', 'POST', { input_path: inputPath, output_dir: outputDir, is_async: isAsync }),

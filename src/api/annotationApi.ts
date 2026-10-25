@@ -41,7 +41,13 @@ export interface AnnotationData {
   parent_id?: string | null;
   resolved?: boolean;
   author?: string;
-  source?: 'matn';
+  source?: 'matn' | 'qt-native';
+  /** Raw unrotated PyMuPDF point rectangles for native annotations. */
+  pdf_rects?: number[][];
+  pdf_page_size?: number[];
+  pdf_xref?: number;
+  document_uid?: string;
+  native_type?: string;
   replies?: AnnotationReply[];
 }
 

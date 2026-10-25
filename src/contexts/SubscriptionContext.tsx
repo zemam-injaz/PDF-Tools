@@ -170,6 +170,8 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     isLoading,
     daysRemaining,
     checkAccess: (feature: string) => {
+      // Development builds unlock premium controls for the app owner while features are being built.
+      if (import.meta.env.DEV) return true;
       // First launch: prevent a lock-screen flash before the server responds
       if (isLoading && !data) return true;
       // The client cache never grants access by itself; it only allows using the

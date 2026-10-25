@@ -8,6 +8,18 @@ interface PDFCompressToolProps {
   initialPath?: string;
 }
 
+const formatBytes = (bytes: number): string => {
+  if (!bytes) return '0 بايت';
+  const units = ['بايت', 'ك.ب', 'م.ب', 'ج.ب'];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(unit === 0 || value >= 10 ? 0 : 1)} ${units[unit]}`;
+};
+
 export const PDFCompressTool: React.FC<PDFCompressToolProps> = ({ initialPath = '' }) => {
   const [inputPath, setInputPath] = useState(initialPath);
   const [outputPath, setOutputPath] = useState(() => initialPath ? getDefaultOutputPath(initialPath, '_compressed') : '');
@@ -31,7 +43,16 @@ export const PDFCompressTool: React.FC<PDFCompressToolProps> = ({ initialPath = 
     const res = await api.compress(inputPath, outputPath, level);
     setLoading(false);
     if (res.success) {
-      setStatus({ type: 'success', message: 'تم ضغط الملف بنجاح!' });
+      const original = res.data?.original_size ?? 0;
+      const compressed = res.data?.compressed_size ?? 0;
+      let message = 'تم ضغط الملف بنجاح!';
+      if (original > 0 && compressed > 0) {
+        const saved = Math.round((1 - compressed / original) * 100);
+        message = compressed < original
+          ? `تم الضغط: ${formatBytes(original)} ← ${formatBytes(compressed)} (توفير ${saved}%)`
+          : `تمت المعالجة — لم ينقص الحجم أكثر (${formatBytes(compressed)}). قد يكون الملف مضغوطاً أصلاً أو صورياً.`;
+      }
+      setStatus({ type: 'success', message });
       setInputPath('');
       setOutputPath('');
     } else {

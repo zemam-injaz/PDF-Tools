@@ -27,9 +27,11 @@ Requires: PyQt6, PyMuPDF (fitz).
 from __future__ import annotations
 
 import bisect
+import json
 import os
 import sys
 import threading
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
@@ -64,6 +66,10 @@ from PyQt6.QtGui import (
     QTransform,
 )
 from PyQt6.QtSvg import QSvgRenderer
+try:
+    from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+except ImportError:
+    QOpenGLWidget = None
 from PyQt6.QtWidgets import (
     QApplication,
     QColorDialog,
@@ -82,11 +88,15 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QInputDialog,
     QLabel,
+    QLineEdit,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
     QStatusBar,
+    QTabWidget,
     QToolBar,
     QToolButton,
     QTreeWidget,
@@ -99,8 +109,9 @@ from PyQt6.QtWidgets import (
 # Configuration
 # --------------------------------------------------------------------------- #
 
-PAGE_MARGIN = 18.0          # scene units (PDF points) around the page column
-PAGE_GAP = 24.0             # vertical gap between pages
+PAGE_MARGIN = 32.0          # scene units (PDF points) around the page column
+PAGE_GAP = 34.0             # vertical gap between pages
+READING_FIT_MAX_SCALE = 1.4
 MIN_SCALE = 0.05
 MAX_SCALE = 12.0
 MAX_RENDER_SCALE = 8.0
@@ -142,9 +153,9 @@ def render_bucket(scale: float) -> float:
 
 
 def page_display_size(page: fitz.Page) -> Tuple[float, float]:
+    # PyMuPDF page.rect already reflects page rotation. Swapping it again
+    # misaligns the scene, hit testing and native PDF point coordinates.
     rect = page.rect
-    if page.rotation % 180 == 90:
-        return rect.height, rect.width
     return rect.width, rect.height
 
 
@@ -438,6 +449,103 @@ QComboBox QAbstractItemView {
     selection-background-color: #2563eb;
     outline: 0;
 }
+
+/* --- Reader workspace -------------------------------------------------- */
+QMainWindow { background-color: #171c25; }
+QToolBar#documentBar {
+    background-color: #1a202b;
+    border-bottom: 1px solid #30394a;
+    padding: 9px 16px;
+    spacing: 7px;
+}
+QToolBar#readingBar {
+    background-color: #202734;
+    border-bottom: 1px solid #354052;
+    padding: 6px 14px;
+    spacing: 5px;
+}
+QToolBar#documentBar QToolButton {
+    padding: 7px 10px;
+    font-weight: 600;
+}
+QToolBar#readingBar QToolButton { padding: 7px; }
+QLabel#readerBrand {
+    color: #a9c7ff;
+    font-size: 18px;
+    font-weight: 800;
+    padding: 0 8px;
+}
+QLabel#documentTitle {
+    color: #f1f5fb;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0 6px;
+}
+QLabel#toolbarSection {
+    color: #8d9bad;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0 7px;
+}
+QGraphicsView { background-color: #252b35; }
+QFrame#pill, QLabel#pill {
+    background-color: #161d28;
+    border: 1px solid #39465a;
+    border-radius: 8px;
+}
+QLabel#pill { padding: 5px 11px; }
+QToolButton#toolsMenuButton {
+    background-color: #2b3951;
+    border: 1px solid #45608a;
+    border-radius: 7px;
+    color: #eaf2ff;
+    padding: 6px 10px;
+}
+QToolButton#toolsMenuButton:hover { background-color: #365078; }
+QMenu {
+    background-color: #202734;
+    color: #e8effa;
+    border: 1px solid #455267;
+    padding: 5px;
+}
+QMenu::item { padding: 8px 24px; border-radius: 5px; }
+QMenu::item:selected { background-color: #34527c; }
+QMenu::indicator:checked { background-color: #73a5ff; border-radius: 3px; }
+QDockWidget#readerSidebar { color: #e5edf8; font-weight: 700; }
+QDockWidget#readerSidebar::title {
+    background-color: #1a202b;
+    border-bottom: 1px solid #354052;
+    padding: 11px 14px;
+    text-align: right;
+}
+QTabWidget#readerSidebarTabs::pane {
+    background-color: #1b2230;
+    border: none;
+}
+QTabBar::tab {
+    background-color: #1b2230;
+    color: #99a8bc;
+    padding: 10px 18px;
+    border-bottom: 2px solid transparent;
+}
+QTabBar::tab:selected {
+    color: #e9f1ff;
+    border-bottom-color: #77a8ff;
+}
+QLabel#sidebarCount { color: #c3d0e1; font-size: 12px; }
+QLabel#sidebarEmpty {
+    color: #9aaabc;
+    background-color: #252f3d;
+    border: 1px dashed #46556a;
+    border-radius: 10px;
+    padding: 18px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+QTreeWidget { background-color: #1b2230; }
+QFrame#card { background-color: #273243; border-color: #3b4b60; }
+QStatusBar { background-color: #1a202b; border-top: 1px solid #354052; }
+QLabel#readingStatus { color: #c5d8f5; font-weight: 600; padding: 0 12px; }
 """
 
 ARABIC_FONT_FAMILY = "IBM Plex Sans Arabic"
@@ -583,6 +691,7 @@ class Annotation:
     created: str = ""
     xref: Optional[int] = None                 # set when imported from the file
     deleted: bool = False
+    db_id: Optional[str] = None               # legacy Matn annotation, not in the PDF
 
 
 # --------------------------------------------------------------------------- #
@@ -847,7 +956,12 @@ class PDFViewport(QGraphicsView):
         self._manager = manager
         self._scene = QGraphicsScene(self)
         self.setScene(self._scene)
-        self.setBackgroundBrush(QColor("#090a0f"))
+        if QOpenGLWidget is not None and os.environ.get("MATN_DISABLE_OPENGL") != "1":
+            try:
+                self.setViewport(QOpenGLWidget())
+            except Exception:
+                pass  # Remote desktops and virtual machines may lack OpenGL.
+        self.setBackgroundBrush(QColor("#252b35"))
         self.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.SmoothPixmapTransform)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.NoAnchor)
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.NoAnchor)
@@ -918,7 +1032,7 @@ class PDFViewport(QGraphicsView):
             self._page_tops.append(y)
             rect_item = QGraphicsRectItem(rect)
             rect_item.setBrush(QColor("#ffffff"))
-            rect_item.setPen(QColor("#00000020"))
+            rect_item.setPen(QPen(QColor("#d4d9e0"), 0.75))
             rect_item.setZValue(0)
             self._scene.addItem(rect_item)
             y += height + PAGE_GAP
@@ -1080,7 +1194,7 @@ class PDFViewport(QGraphicsView):
         self._auto_fit = True
         available = self.viewport().width() - 2 * PAGE_MARGIN
         if available > 10 and self._max_page_width > 0:
-            self.set_scale_absolute(available / self._max_page_width)
+            self.set_scale_absolute(min(READING_FIT_MAX_SCALE, available / self._max_page_width))
         elif request_render:
             self.set_scale_absolute(self._committed_scale)
 
@@ -1395,9 +1509,12 @@ class PDFReaderWindow(QMainWindow):
 
         self._annotations: List[Annotation] = []
         self._current_path: Optional[str] = None
+        self._toc: List[list] = []
+        self._outline_items: List[Tuple[int, QTreeWidgetItem]] = []
         self._dirty = False
         self._active_color: Optional[Tuple[float, float, float]] = None
         self._selected_index: Optional[int] = None
+        self._comments_query = ""
         self._item_by_index: Dict[int, QTreeWidgetItem] = {}
 
         self.viewport = PDFViewport(self._manager, self)
@@ -1409,27 +1526,99 @@ class PDFReaderWindow(QMainWindow):
         self._build_toolbar()
         self._build_comments_dock()
         self.setStatusBar(QStatusBar(self))
+        self.reading_status = QLabel("جاهز للقراءة", self)
+        self.reading_status.setObjectName("readingStatus")
+        self.statusBar().addPermanentWidget(self.reading_status)
         self._status("جاهز")
 
         if path:
             self.open_document(path)
 
+    def _emit_bridge(self, kind: str, **fields) -> None:
+        if os.environ.get("MATN_BACKEND_PORT"):
+            # Keep the pipe ASCII-safe even when Windows assigns stdout cp1252.
+            payload = json.dumps({"type": kind, "book_id": self.book_id, **fields}, ensure_ascii=True)
+            try:
+                print(payload, flush=True)
+            except (BrokenPipeError, OSError):
+                pass
+
+    def bridge_command(self, message: dict) -> None:
+        kind = message.get("type")
+        if kind == "open":
+            path = message.get("path")
+            if not isinstance(path, str) or not os.path.isfile(path) or not path.lower().endswith(".pdf"):
+                return
+            if self._dirty:
+                reply = QMessageBox.question(
+                    self, "تغييرات غير محفوظة", "حفظ التعليقات قبل فتح كتاب آخر؟",
+                    QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
+                )
+                if reply == QMessageBox.StandardButton.Cancel:
+                    self._emit_bridge("open_cancelled", requested_book_id=message.get("book_id"))
+                    return
+                if reply == QMessageBox.StandardButton.Save:
+                    self.save_native(overwrite=True)
+                    if self._dirty:
+                        self._emit_bridge("open_cancelled", requested_book_id=message.get("book_id"))
+                        return
+            self.book_id = str(message.get("book_id") or "")
+            if os.path.normcase(path) != os.path.normcase(self._current_path or ""):
+                self.open_document(path)
+            else:
+                self._emit_bridge("document_opened", path=path, page=self.viewport.current_page() + 1,
+                                  page_count=self.viewport.page_count)
+            self.showNormal()
+            self.raise_()
+            self.activateWindow()
+        elif kind == "focus":
+            self.showNormal()
+            self.raise_()
+            self.activateWindow()
+        elif kind == "minimize":
+            self.showMinimized()
+        elif kind == "close":
+            self.close()
+        elif kind == "goto" and isinstance(message.get("page"), int):
+            self.viewport.goto_page(message["page"] - 1)
+        elif kind == "zoom" and isinstance(message.get("zoom"), (int, float)):
+            self.viewport.set_auto_fit(False)
+            self.viewport.set_scale_absolute(float(message["zoom"]))
+        elif kind == "comments" and isinstance(message.get("visible"), bool):
+            self.comments_dock.setVisible(message["visible"])
+            if message["visible"]:
+                self.sidebar_tabs.setCurrentIndex(1)
+        elif kind == "filter_comments" and isinstance(message.get("query"), str):
+            self.comments_search.setText(message["query"])
+
     # -- UI ----------------------------------------------------------------- #
     def _build_toolbar(self) -> None:
-        toolbar = QToolBar("Main", self)
-        toolbar.setMovable(False)
-        toolbar.setIconSize(QSize(19, 19))
-        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
-        self.addToolBar(toolbar)
+        header = QToolBar("المستند", self)
+        header.setObjectName("documentBar")
+        header.setMovable(False)
+        header.setIconSize(QSize(18, 18))
+        header.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.addToolBar(header)
 
-        def add(icon: str, tip: str, slot, checkable: bool = False, shortcut=None) -> QAction:
+        reader = QToolBar("القراءة والتعليق", self)
+        reader.setObjectName("readingBar")
+        reader.setMovable(False)
+        reader.setIconSize(QSize(18, 18))
+        reader.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        self.addToolBarBreak()
+        self.addToolBar(reader)
+
+        def add(bar: QToolBar, icon: str, tip: str, slot, *, label: str = "",
+                checkable: bool = False, shortcut=None, in_bar: bool = True) -> QAction:
             action = QAction(make_icon(icon, "#cbd5e1", 44), "", self)
+            action.setText(label)
             action.setToolTip(tip)
             action.setCheckable(checkable)
             if shortcut is not None:
                 action.setShortcut(shortcut)
             action.triggered.connect(slot)
-            toolbar.addAction(action)
+            if in_bar:
+                bar.addAction(action)
             return action
 
         def pill(*widgets: QWidget) -> QFrame:
@@ -1442,13 +1631,33 @@ class PDFReaderWindow(QMainWindow):
                 lay.addWidget(widget)
             return frame
 
-        # --- Island 1: file & navigation --------------------------------- #
-        add("open", "افتح مستند PDF", self._choose_file, shortcut=QKeySequence.StandardKey.Open)
-        add("save", "حفظ التعديلات كتعليقات PDF أصلية",
-            lambda: self.save_native(overwrite=True), shortcut=QKeySequence.StandardKey.Save)
-        add("export", "حفظ باسم / تصدير نسخة", lambda: self.save_native(overwrite=False))
+        brand = QLabel("مَتن", self)
+        brand.setObjectName("readerBrand")
+        header.addWidget(brand)
+        header.addSeparator()
+        self.document_title = QLabel("افتح مستندًا لبدء القراءة", self)
+        self.document_title.setObjectName("documentTitle")
+        self.document_title.setMinimumWidth(170)
+        self.document_title.setMaximumWidth(350)
+        header.addWidget(self.document_title)
+        spacer = QWidget(self)
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        header.addWidget(spacer)
+        add(header, "open", "افتح مستند PDF", self._choose_file, label="فتح",
+            shortcut=QKeySequence.StandardKey.Open)
+        add(header, "save", "حفظ التعديلات كتعليقات PDF أصلية",
+            lambda: self.save_native(overwrite=True), label="حفظ",
+            shortcut=QKeySequence.StandardKey.Save)
+        add(header, "export", "حفظ نسخة جديدة", lambda: self.save_native(overwrite=False),
+            label="حفظ نسخة")
+        header.addSeparator()
+        add(header, "page", "فتح فهرس المستند", lambda: self._show_sidebar(0), label="الفهرس")
+        add(header, "note", "فتح التعليقات والملاحظات", lambda: self._show_sidebar(1), label="التعليقات")
 
-        add("prev", "الصفحة السابقة", lambda: self.viewport.goto_page(self.viewport.current_page() - 1))
+        section = QLabel("الصفحة", self)
+        section.setObjectName("toolbarSection")
+        reader.addWidget(section)
+        add(reader, "prev", "الصفحة السابقة", lambda: self.viewport.goto_page(self.viewport.current_page() - 1))
         self.page_spin = QSpinBox(self)
         self.page_spin.setMinimum(1)
         self.page_spin.setMaximum(1)
@@ -1456,39 +1665,58 @@ class PDFReaderWindow(QMainWindow):
         self.page_spin.valueChanged.connect(lambda v: self.viewport.goto_page(v - 1))
         self.page_label = QLabel(" / 0 ", self)
         self.page_label.setObjectName("totalPages")
-        toolbar.addWidget(pill(self.page_spin, self.page_label))
-        add("next", "الصفحة التالية", lambda: self.viewport.goto_page(self.viewport.current_page() + 1))
+        reader.addWidget(pill(self.page_spin, self.page_label))
+        add(reader, "next", "الصفحة التالية", lambda: self.viewport.goto_page(self.viewport.current_page() + 1))
 
-        toolbar.addSeparator()
-
-        # --- Island 2: view & zoom --------------------------------------- #
-        add("zoom_out", "تصغير العرض", self.viewport.zoom_out)
+        reader.addSeparator()
+        section = QLabel("العرض", self)
+        section.setObjectName("toolbarSection")
+        reader.addWidget(section)
+        add(reader, "zoom_out", "تصغير العرض", self.viewport.zoom_out)
         self.zoom_label = QLabel(" 100% ", self)
         self.zoom_label.setObjectName("pill")
-        toolbar.addWidget(self.zoom_label)
-        add("zoom_in", "تكبير العرض", self.viewport.zoom_in)
-        add("fit_width", "ملاءمة العرض للنافذة", lambda: self.viewport.fit_width())
-        add("fit_page", "ملاءمة الصفحة كاملة", self.viewport.fit_page)
-        add("actual", "الحجم الطبيعي (100%)", self._zoom_actual)
+        reader.addWidget(self.zoom_label)
+        add(reader, "zoom_in", "تكبير العرض", self.viewport.zoom_in)
+        add(reader, "fit_width", "ملاءمة عرض الصفحة للنافذة (حد أقصى 140%)", self.viewport.fit_width)
+        add(reader, "fit_page", "ملاءمة الصفحة كاملة", self.viewport.fit_page)
+        add(reader, "actual", "الحجم الطبيعي (100%)", self._zoom_actual)
 
-        toolbar.addSeparator()
-
-        # --- Island 3: annotation tools ---------------------------------- #
-        self.pan_act = add("pan", "أداة التحريك (يد)", lambda _checked=False: self._switch_mode("pan"), checkable=True)
+        reader.addSeparator()
+        section = QLabel("الأدوات", self)
+        section.setObjectName("toolbarSection")
+        reader.addWidget(section)
+        self.pan_act = add(reader, "pan", "تحريك الصفحة", lambda _checked=False: self._switch_mode("pan"),
+                           checkable=True)
         self.pan_act.setChecked(True)
         self._tool_actions = {"pan": self.pan_act}
+        self._mode_labels = {"pan": "تحريك", "highlight": "تظليل"}
 
-        def add_tool(mode: str, icon: str, tip: str) -> None:
-            action = add(icon, tip, lambda _checked=False, m=mode: self._switch_mode(m), checkable=True)
+        def add_tool(mode: str, icon: str, label: str, tip: str, *, direct: bool = False) -> None:
+            action = add(reader, icon, tip, lambda _checked=False, m=mode: self._switch_mode(m),
+                         label=label, checkable=True, in_bar=direct)
             self._tool_actions[mode] = action
+            self._mode_labels[mode] = label
+            if not direct:
+                tools_menu.addAction(action)
 
-        add_tool("highlight", "highlight", "تظليل نصي: اسحب فوق النص (تُلتقط الكلمات تلقائيًا)")
-        add_tool("underline", "underline", "تسطير النص المحدد")
-        add_tool("area", "area", "تظليل مساحة: ارسم مستطيلًا حرًا فوق أي جزء من الصفحة")
-        add_tool("note", "note", "ملاحظة ملصقة: انقر في أي موضع")
-        add_tool("benefit", "star", "تسجيل فائدة: نقطة سريعة لفائدة أو خاطرة")
-        add_tool("freetext", "type", "كتابة على الصفحة: انقر ثم اكتب (Typewriter)")
-        add_tool("stamp", "clock", "ختم التاريخ والوقت الحالي")
+        tools_menu = QMenu(self)
+        add_tool("highlight", "highlight", "تظليل نصي", "اسحب فوق النص لتظليله", direct=True)
+        add_tool("underline", "underline", "تسطير", "تسطير النص المحدد")
+        add_tool("area", "area", "تظليل مساحة", "ارسم مستطيلًا حرًا فوق الصفحة")
+        add_tool("note", "note", "ملاحظة", "أضف ملاحظة بالنقر على الصفحة")
+        add_tool("benefit", "star", "فائدة", "سجّل فائدة أو خاطرة")
+        add_tool("freetext", "type", "كتابة", "اكتب مباشرة على الصفحة")
+        add_tool("stamp", "clock", "ختم وقت", "أضف التاريخ والوقت الحاليين")
+        self.tools_button = QToolButton(self)
+        self.tools_button.setObjectName("toolsMenuButton")
+        self.tools_button.setText("مزيد من الأدوات")
+        self.tools_button.setIcon(make_icon("note"))
+        self.tools_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.tools_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.tools_button.setMenu(tools_menu)
+        reader.addWidget(self.tools_button)
+
+        reader.addSeparator()
 
         self.color_combo = QComboBox(self)
         self.color_combo.setToolTip("لون التعليقات الجديدة (التظليل، التسطير، المساحة، الملاحظات...)")
@@ -1497,17 +1725,55 @@ class PDFReaderWindow(QMainWindow):
             self.color_combo.addItem(make_color_icon(rgb), name, rgb)
         self.color_combo.addItem(make_color_icon((0.8, 0.8, 0.8)), "مخصص…", "custom")
         self.color_combo.currentIndexChanged.connect(self._on_color_changed)
-        toolbar.addWidget(self.color_combo)
-        add("paint", "تطبيق اللون الحالي على التعليق المحدد", self._recolor_selected)
+        reader.addWidget(self.color_combo)
+        add(reader, "paint", "تطبيق اللون الحالي على التعليق المحدد", self._recolor_selected)
 
     def _build_comments_dock(self) -> None:
-        dock = QDockWidget("سجل التعليقات والملاحظات", self)
+        dock = QDockWidget("لوحة القراءة", self)
+        dock.setObjectName("readerSidebar")
+        self.comments_dock = dock
+        dock.visibilityChanged.connect(lambda visible: self._emit_bridge("comments_visibility_changed", visible=visible))
         dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        dock.setMinimumWidth(270)
 
-        panel = QWidget()
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(8)
+        self.sidebar_tabs = QTabWidget(self)
+        self.sidebar_tabs.setObjectName("readerSidebarTabs")
+
+        outline_panel = QWidget(self)
+        outline_layout = QVBoxLayout(outline_panel)
+        outline_layout.setContentsMargins(12, 12, 12, 12)
+        outline_layout.setSpacing(10)
+        self.outline_empty = QLabel("لا يحتوي هذا المستند على فهرس.\nيمكنك الانتقال برقم الصفحة من شريط القراءة.", self)
+        self.outline_empty.setObjectName("sidebarEmpty")
+        self.outline_empty.setWordWrap(True)
+        self.outline_empty.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        self.outline_empty.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        outline_layout.addWidget(self.outline_empty)
+        self.outline_tree = QTreeWidget(self)
+        self.outline_tree.setHeaderHidden(True)
+        self.outline_tree.setIndentation(18)
+        self.outline_tree.itemClicked.connect(self._on_outline_activated)
+        outline_layout.addWidget(self.outline_tree)
+        self.sidebar_tabs.addTab(outline_panel, "الفهرس")
+
+        comments_panel = QWidget(self)
+        layout = QVBoxLayout(comments_panel)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
+        self.comments_count = QLabel("0 تعليق", self)
+        self.comments_count.setObjectName("sidebarCount")
+        layout.addWidget(self.comments_count)
+        self.comments_search = QLineEdit(self)
+        self.comments_search.setPlaceholderText("ابحث في التعليقات…")
+        self.comments_search.setClearButtonEnabled(True)
+        self.comments_search.textChanged.connect(self._set_comments_query)
+        layout.addWidget(self.comments_search)
+        self.comments_empty = QLabel("لا توجد تعليقات بعد.\nحدد أداة من الشريط وأضف تعليقًا إلى الصفحة.", self)
+        self.comments_empty.setObjectName("sidebarEmpty")
+        self.comments_empty.setWordWrap(True)
+        self.comments_empty.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        self.comments_empty.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        layout.addWidget(self.comments_empty)
 
         self.comments_tree = QTreeWidget()
         self.comments_tree.setHeaderHidden(True)
@@ -1517,13 +1783,56 @@ class PDFReaderWindow(QMainWindow):
         self.comments_tree.setIndentation(14)
         self.comments_tree.itemClicked.connect(self._on_comment_activated)
         layout.addWidget(self.comments_tree)
+        self.sidebar_tabs.addTab(comments_panel, "التعليقات")
 
-        dock.setWidget(panel)
+        dock.setWidget(self.sidebar_tabs)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
+        self.resizeDocks([dock], [320], Qt.Orientation.Horizontal)
+        dock.hide()
+
+    def _show_sidebar(self, index: int) -> None:
+        self.sidebar_tabs.setCurrentIndex(index)
+        self.comments_dock.show()
+        self.comments_dock.raise_()
+
+    def _populate_outline(self) -> None:
+        self.outline_tree.clear()
+        self._outline_items = []
+        parents: List[QTreeWidgetItem] = []
+        for level, title, page, *_ in self._toc:
+            if page < 1:
+                continue
+            level = max(1, int(level))
+            while len(parents) >= level:
+                parents.pop()
+            parent = parents[-1] if parents else self.outline_tree
+            item = QTreeWidgetItem(parent)
+            item.setText(0, f"{title}  ·  {page}")
+            item.setToolTip(0, str(title))
+            item.setData(0, Qt.ItemDataRole.UserRole, int(page) - 1)
+            self._outline_items.append((int(page) - 1, item))
+            parents.append(item)
+            if level == 1:
+                item.setExpanded(True)
+        has_outline = self.outline_tree.topLevelItemCount() > 0
+        self.outline_tree.setVisible(has_outline)
+        self.outline_empty.setVisible(not has_outline)
+
+    def _on_outline_activated(self, item: QTreeWidgetItem, _column: int) -> None:
+        page = item.data(0, Qt.ItemDataRole.UserRole)
+        if isinstance(page, int):
+            self.viewport.goto_page(page)
+
+    def _set_comments_query(self, text: str) -> None:
+        self._comments_query = text.strip().casefold()
+        self._apply_comments_filter()
 
     def _switch_mode(self, mode: str) -> None:
         for name, action in self._tool_actions.items():
             action.setChecked(name == mode)
+        self.tools_button.setText(
+            "مزيد من الأدوات" if mode in ("pan", "highlight") else self._mode_labels[mode]
+        )
         self.viewport.set_mode(mode)
 
     def _zoom_actual(self) -> None:
@@ -1555,6 +1864,9 @@ class PDFReaderWindow(QMainWindow):
             self._status("اختر لونًا من القائمة أولًا")
             return
         annot = self._annotations[index]
+        if annot.db_id:
+            self._status("عدّل ملاحظات مَتن القديمة من واجهة مَتن")
+            return
         replacement = Annotation(
             page=annot.page, kind=annot.kind, color=color, text=annot.text,
             quads=annot.quads, point=annot.point, rect=annot.rect, created=annot.created,
@@ -1575,7 +1887,7 @@ class PDFReaderWindow(QMainWindow):
     def _choose_file(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "افتح ملف PDF", "", "PDF (*.pdf)")
         if path:
-            self.open_document(path)
+            self.bridge_command({"type": "open", "path": path, "book_id": None})
 
     def open_document(self, path: str, preserve: Optional[dict] = None) -> None:
         if not os.path.isfile(path):
@@ -1589,15 +1901,21 @@ class PDFReaderWindow(QMainWindow):
         try:
             doc = self._registry.open(path)
             sizes = [page_display_size(doc.load_page(i)) for i in range(doc.page_count)]
+            try:
+                self._toc = doc.get_toc()
+            except Exception:
+                self._toc = []
         except Exception as exc:
             QMessageBox.critical(self, "خطأ", f"تعذّر فتح الملف:\n{exc}")
             return
 
         self._current_path = path
         self._dirty = False
+        self._populate_outline()
         self._manager.reset()
         self.viewport.load_pages(sizes)
         self._import_annotations()
+        self._import_matn_annotations()
 
         self.page_spin.blockSignals(True)
         self.page_spin.setMaximum(max(1, len(sizes)))
@@ -1612,11 +1930,20 @@ class PDFReaderWindow(QMainWindow):
 
         self._update_title()
         self._status(f"{len(sizes)} صفحة · {os.path.basename(path)}")
+        self._emit_bridge("document_opened", path=path, page=self.viewport.current_page() + 1,
+                          page_count=len(sizes))
 
     def _update_title(self) -> None:
         name = os.path.basename(self._current_path) if self._current_path else ""
         star = " *" if self._dirty else ""
         self.setWindowTitle(f"مَتن - {name}{star}")
+        if hasattr(self, "document_title"):
+            self.document_title.setText(
+                self.document_title.fontMetrics().elidedText(
+                    name or "افتح مستندًا لبدء القراءة", Qt.TextElideMode.ElideMiddle, 330
+                ) + star
+            )
+            self.document_title.setToolTip(self._current_path or "")
 
     # -- annotations <-> document ------------------------------------------ #
     def _import_annotations(self) -> None:
@@ -1694,6 +2021,50 @@ class PDFReaderWindow(QMainWindow):
         self.viewport.set_annotations(self._annotations)
         self._reload_comments()
 
+    def _import_matn_annotations(self) -> None:
+        """Show existing app-only notes as overlays without writing them into the PDF."""
+        port = os.environ.get("MATN_BACKEND_PORT")
+        token = os.environ.get("MATN_BACKEND_TOKEN")
+        doc = self._registry.main
+        if not port or not token or not self.book_id or doc is None:
+            return
+        try:
+            request = urllib.request.Request(
+                f"http://127.0.0.1:{int(port)}/api/annotations/book/{int(self.book_id)}",
+                headers={"X-Local-API-Token": token},
+            )
+            with urllib.request.urlopen(request, timeout=2) as response:
+                records = json.load(response).get("data", [])
+            for record in records:
+                data = record.get("data") or {}
+                if data.get("source") == "qt-native":
+                    continue
+                page_number = int(record["page"]) - 1
+                if not 0 <= page_number < doc.page_count:
+                    continue
+                page = doc.load_page(page_number)
+                width, height = page.rect.width, page.rect.height
+                kind = record.get("type")
+                if kind not in ("highlight", "underline", "note"):
+                    kind = "note"
+                rects = data.get("rects") or []
+                quads = [(float(r["x"]) * width, float(r["y"]) * height,
+                          float(r["x"] + r["w"]) * width, float(r["y"] + r["h"]) * height)
+                         for r in rects]
+                color = QColor(data.get("colorHex") or "#eacb3b")
+                rgb = (color.redF(), color.greenF(), color.blueF())
+                self._annotations.append(Annotation(
+                    page_number, kind, rgb, data.get("text") or data.get("quote") or "",
+                    quads=quads if kind in ("highlight", "underline") else None,
+                    point=(float(record["x"]) * width, float(record["y"]) * height)
+                    if kind == "note" else None,
+                    created=record.get("created_at", ""), db_id=record["id"],
+                ))
+            self.viewport.set_annotations(self._annotations)
+            self._reload_comments()
+        except Exception as exc:
+            self._status(f"تعذّر تحميل ملاحظات مَتن: {exc}")
+
     @staticmethod
     def _line_quads(page: fitz.Page, drag: fitz.Rect) -> List[fitz.Rect]:
         """Merge the selected words of each text line into one straight band.
@@ -1750,6 +2121,11 @@ class PDFReaderWindow(QMainWindow):
         self.viewport.set_annotations(self._annotations)
         self._reload_comments()
         self.viewport.flash_annotation(annot)
+        page = self._registry.main.load_page(annot.page)
+        rects = self._model_rects_fitz(page, annot)
+        self._emit_bridge("annotation_created", page=annot.page + 1, saved=False,
+                          annotation={"kind": annot.kind, "text": annot.text,
+                                      "pdf_rects": [[r.x0, r.y0, r.x1, r.y1] for r in rects]})
 
     @staticmethod
     def _now() -> str:
@@ -1840,6 +2216,9 @@ class PDFReaderWindow(QMainWindow):
                 continue
             by_page.setdefault(annot.page, []).append(index)
 
+        count = sum(len(indices) for indices in by_page.values())
+        self.comments_count.setText(arabic_plural(count))
+
         for page in sorted(by_page):
             indices = by_page[page]
             root = QTreeWidgetItem(self.comments_tree)
@@ -1865,6 +2244,31 @@ class PDFReaderWindow(QMainWindow):
                 self.comments_tree.setItemWidget(child, 0, card)
                 self._item_by_index[index] = child
             root.setExpanded(True)
+        self._apply_comments_filter()
+
+    def _apply_comments_filter(self) -> None:
+        query = self._comments_query
+        matches_total = 0
+        for index in range(self.comments_tree.topLevelItemCount()):
+            root = self.comments_tree.topLevelItem(index)
+            visible_count = 0
+            for child_index in range(root.childCount()):
+                child = root.child(child_index)
+                card = self.comments_tree.itemWidget(child, 0)
+                snippet = card.findChild(QLabel, "snippet") if card is not None else None
+                meta = card.findChild(QLabel, "meta") if card is not None else None
+                searchable = " ".join(label.text() for label in (snippet, meta) if label is not None)
+                matches = not query or query in searchable.casefold()
+                child.setHidden(not matches)
+                visible_count += int(matches)
+            root.setHidden(visible_count == 0)
+            matches_total += visible_count
+        self.comments_tree.setVisible(matches_total > 0)
+        self.comments_empty.setText(
+            "لا توجد نتائج لهذا البحث." if query else
+            "لا توجد تعليقات بعد.\nحدد أداة من الشريط وأضف تعليقًا إلى الصفحة."
+        )
+        self.comments_empty.setVisible(matches_total == 0)
 
     def _on_comment_activated(self, item: QTreeWidgetItem, column: int) -> None:
         data = item.data(0, Qt.ItemDataRole.UserRole)
@@ -1886,6 +2290,26 @@ class PDFReaderWindow(QMainWindow):
         if not (0 <= index < len(self._annotations)):
             return
         annot = self._annotations[index]
+        if annot.db_id:
+            port = os.environ.get("MATN_BACKEND_PORT")
+            token = os.environ.get("MATN_BACKEND_TOKEN")
+            try:
+                request = urllib.request.Request(
+                    f"http://127.0.0.1:{int(port)}/api/annotations/{annot.db_id}",
+                    headers={"X-Local-API-Token": token}, method="DELETE",
+                )
+                with urllib.request.urlopen(request, timeout=2):
+                    pass
+            except Exception as exc:
+                self._status(f"تعذّر حذف ملاحظة مَتن: {exc}")
+                return
+            self._annotations.pop(index)
+            self._selected_index = None
+            self.viewport.set_annotations(self._annotations)
+            self._reload_comments()
+            self._emit_bridge("annotation_deleted", page=annot.page + 1, saved=True,
+                              annotation={"db_id": annot.db_id})
+            return
         if annot.xref is not None:
             annot.deleted = True          # removed from the file on next save
         else:
@@ -1894,6 +2318,8 @@ class PDFReaderWindow(QMainWindow):
         self._mark_dirty()
         self.viewport.set_annotations(self._annotations)
         self._reload_comments()
+        self._emit_bridge("annotation_deleted", page=annot.page + 1, saved=False,
+                          annotation={"pdf_xref": annot.xref})
 
     def _mark_dirty(self) -> None:
         self._dirty = True
@@ -1980,7 +2406,7 @@ class PDFReaderWindow(QMainWindow):
         else:
             self._delete_by_geometry(doc)
         for annot in self._annotations:
-            if annot.deleted or annot.xref is not None:
+            if annot.deleted or annot.xref is not None or annot.db_id is not None:
                 continue
             self._add_model_annotation(doc, annot)
 
@@ -2029,8 +2455,11 @@ class PDFReaderWindow(QMainWindow):
             else:
                 doc.save(target, garbage=3, deflate=True, encryption=fitz.PDF_ENCRYPT_KEEP)
                 self._registry.close()
+            if os.path.normcase(target) != os.path.normcase(source):
+                self.book_id = None
             self.open_document(target, preserve={"scale": scale, "page": page})
             self._status("تم حفظ المستند مع التعليقات الأصلية.")
+            self._emit_bridge("document_saved", path=target)
             return
         except Exception:
             pass  # fall through to the repair path
@@ -2047,8 +2476,11 @@ class PDFReaderWindow(QMainWindow):
             else:
                 clean.save(target, garbage=3, deflate=True)
                 clean.close()
+            if os.path.normcase(target) != os.path.normcase(source):
+                self.book_id = None
             self.open_document(target, preserve={"scale": scale, "page": page})
             self._status("تم الحفظ بعد إصلاح بنية الملف.")
+            self._emit_bridge("document_saved", path=target)
         except Exception as exc:
             QMessageBox.critical(self, "خطأ", f"تعذّر الحفظ:\n{exc}")
             if source:
@@ -2057,11 +2489,21 @@ class PDFReaderWindow(QMainWindow):
     # -- signals ------------------------------------------------------------ #
     def _on_zoom_changed(self, scale: float) -> None:
         self.zoom_label.setText(f" {scale * 100:.0f}% ")
+        self._emit_bridge("zoom_changed", zoom=scale, auto_fit=self.viewport._auto_fit)
 
     def _on_page_changed(self, page: int) -> None:
         self.page_spin.blockSignals(True)
         self.page_spin.setValue(page + 1)
         self.page_spin.blockSignals(False)
+        self.reading_status.setText(f"صفحة {page + 1} من {self.viewport.page_count}")
+        self._emit_bridge("page_changed", page=page + 1)
+        chapter = next((entry for entry in reversed(self._toc) if entry[2] <= page + 1), None)
+        outline_item = next((item for item_page, item in reversed(self._outline_items)
+                             if item_page <= page), None)
+        if outline_item is not None and self.outline_tree.currentItem() is not outline_item:
+            self.outline_tree.setCurrentItem(outline_item)
+        self._emit_bridge("chapter_changed", page=page + 1,
+                          chapter_title=chapter[1] if chapter else None)
 
     def _on_render_failed(self, message: str) -> None:
         self._status(f"تعذّر عرض صفحة: {message}")
@@ -2083,6 +2525,9 @@ class PDFReaderWindow(QMainWindow):
                 return
             if reply == QMessageBox.StandardButton.Save:
                 self.save_native(overwrite=True)
+                if self._dirty:
+                    event.ignore()
+                    return
         self.viewport._zoom_timer.stop()
         self.viewport._visible_timer.stop()
         self.viewport._fit_timer.stop()
@@ -2090,6 +2535,7 @@ class PDFReaderWindow(QMainWindow):
         self._pool.clear()
         self._pool.waitForDone(3000)
         self._registry.close()
+        self._emit_bridge("closed")
         super().closeEvent(event)
 
 
@@ -2123,6 +2569,24 @@ def main() -> int:
     path, book_id = _parse_args(sys.argv)
     window = PDFReaderWindow(path, book_id)
     window.show()
+    if os.environ.get("MATN_BACKEND_PORT"):
+        class BridgeInput(QObject):
+            received = pyqtSignal(object)
+
+        bridge = BridgeInput()
+        bridge.received.connect(window.bridge_command)
+
+        def read_commands() -> None:
+            # Rust writes UTF-8 JSON; the Windows text stream may default to cp1252.
+            for raw_line in sys.stdin.buffer:
+                try:
+                    message = json.loads(raw_line.decode("utf-8"))
+                    if isinstance(message, dict):
+                        bridge.received.emit(message)
+                except (ValueError, UnicodeError):
+                    continue
+
+        threading.Thread(target=read_commands, daemon=True).start()
     return app.exec()
 
 

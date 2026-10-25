@@ -145,6 +145,7 @@ export const InteractivePDFViewer: React.FC<InteractivePDFViewerProps> = ({
       setLayout(prefs.layout);
       setFitMode(prefs.fitMode);
       setZoom(prefs.zoom);
+      setCommentsOpen(prefs.commentsOpen);
       setCurrentPage(prefs.lastPage);
       setPageInput(String(prefs.lastPage));
       setAnchorPage(prefs.lastPage);
@@ -156,10 +157,10 @@ export const InteractivePDFViewer: React.FC<InteractivePDFViewerProps> = ({
   useEffect(() => {
     if (!prefsLoaded) return;
     const t = window.setTimeout(() => {
-      saveReaderPrefs(bookId, { layout, fitMode, zoom, lastPage: currentPage });
+      saveReaderPrefs(bookId, { layout, fitMode, zoom, lastPage: currentPage, commentsOpen });
     }, 500);
     return () => window.clearTimeout(t);
-  }, [prefsLoaded, bookId, layout, fitMode, zoom, currentPage]);
+  }, [prefsLoaded, bookId, layout, fitMode, zoom, currentPage, commentsOpen]);
 
   // Restore scroll position after a scale or layout change, and after the
   // initial document load. If the target page is not mounted yet we keep the
@@ -204,7 +205,9 @@ export const InteractivePDFViewer: React.FC<InteractivePDFViewerProps> = ({
   const loadAnnotations = useCallback(async () => {
     try {
       const annots = await annotationApi.getAnnotations(bookId);
-      setAnnotations(annots);
+      // Native annotations already render through PDF.js; the DB mirror only
+      // supports search/progress and must not draw a second overlay.
+      setAnnotations(annots.filter(annot => annot.data.source !== 'qt-native'));
       setUndoStack([]);
       setRedoStack([]);
     } catch (err) {

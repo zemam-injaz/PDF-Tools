@@ -30,6 +30,8 @@ src-tauri/target
 # Python build artifacts
 python-server/build/
 python-server/dist/
+qt_pdf_reader/build/
+qt_pdf_reader/dist/
 *.spec
 
 # Python cache

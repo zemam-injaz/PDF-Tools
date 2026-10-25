@@ -1,5 +1,6 @@
 """PDF Core Service - Merge, Split, Compress, Extract Images, Info"""
 import os
+import shutil
 from typing import List, Dict, Any
 import fitz  # pymupdf
 
@@ -83,45 +84,106 @@ class PDFService:
 
     @staticmethod
     def compress_pdf(input_path: str, output_path: str, compression_level: int = 2) -> bool:
-        """
-        Compress PDF.
-        Levels optimized to avoid file size inflation:
-        level 0: none
-        level 1: garbage=2, deflate=True (Safe basic)
-        level 2: garbage=3, deflate=True (Medium)
-        level 3: garbage=4, deflate=True (High)
-        level 4: garbage=4, deflate=True, clean=True, linear=True (Max/Aggressive)
-        """
-        try:
-            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-            doc = fitz.open(input_path)
-            garbage = 0
-            deflate = False
-            clean = False
-            linear = False
+        """Compress a PDF using structural optimization.
 
-            if compression_level == 0:
-                pass
-            elif compression_level == 1:
-                garbage = 2
-                deflate = True
-            elif compression_level == 2:
-                garbage = 3
-                deflate = True
-            elif compression_level == 3:
-                garbage = 4
-                deflate = True
-            elif compression_level >= 4:
-                garbage = 4
-                deflate = True
-                clean = True
-                linear = True
-                
-            doc.save(output_path, garbage=garbage, deflate=deflate, clean=clean, linear=linear)
+        The previous implementation only re-saved the file and could even make it
+        larger (notably ``linear=True``). This version:
+          * enables image/font deflate, object streams and compression effort,
+          * subsets fonts for higher levels,
+          * falls back to rebuilding a clean copy for damaged PDFs,
+          * guarantees the output is never larger than the input.
+
+        Levels:
+          0: copy without optimization
+          1: basic      (garbage=1, deflate)
+          2: balanced   (garbage=3, deflate images/fonts, object streams)  [recommended]
+          3: strong     (garbage=4, clean, font subsetting)
+          4: maximum    (strong + compression_effort=100)
+        """
+        if not os.path.isfile(input_path):
+            raise FileNotFoundError(f"File not found: {input_path}")
+
+        out_dir = os.path.dirname(os.path.abspath(output_path))
+        os.makedirs(out_dir, exist_ok=True)
+        original_size = os.path.getsize(input_path)
+        level = max(0, min(4, int(compression_level)))
+        same_file = os.path.abspath(input_path) == os.path.abspath(output_path)
+        tmp_path = os.path.join(out_dir, f".{os.path.basename(output_path)}.compressing")
+
+        doc = None
+        try:
+            doc = fitz.open(input_path)
+            if doc.needs_pass:
+                raise PermissionError("PDF is password protected. Remove its security first.")
+
+            if level == 0:
+                doc.save(tmp_path, garbage=0, deflate=False, encryption=fitz.PDF_ENCRYPT_KEEP)
+            else:
+                garbage = {1: 1, 2: 3, 3: 4, 4: 4}[level]
+                effort = {1: 50, 2: 80, 3: 100, 4: 100}[level]
+                if level >= 3:
+                    try:
+                        doc.subset_fonts()
+                    except Exception:
+                        pass
+                doc.save(
+                    tmp_path,
+                    garbage=garbage,
+                    clean=level >= 3,
+                    deflate=True,
+                    deflate_images=True,
+                    deflate_fonts=True,
+                    use_objstms=1,
+                    compression_effort=effort,
+                    encryption=fitz.PDF_ENCRYPT_KEEP,
+                )
             doc.close()
-            return True
-        except Exception as e:
-            raise Exception(f"Compression failed: {str(e)}")
+            doc = None
+        except Exception as primary_error:
+            if doc is not None:
+                try:
+                    doc.close()
+                except Exception:
+                    pass
+                doc = None
+            # Fallback for damaged PDFs: rebuild a clean document via insert_pdf.
+            try:
+                fresh = fitz.open(input_path)
+                clean_doc = fitz.open()
+                clean_doc.insert_pdf(fresh, annots=True, links=True)
+                try:
+                    toc = fresh.get_toc()
+                    if toc:
+                        clean_doc.set_toc(toc)
+                except Exception:
+                    pass
+                fresh.close()
+                clean_doc.save(
+                    tmp_path, garbage=3, deflate=True,
+                    deflate_images=True, deflate_fonts=True, use_objstms=1,
+                )
+                clean_doc.close()
+            except Exception:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+                raise Exception(f"Compression failed: {primary_error}")
+
+        compressed_size = os.path.getsize(tmp_path) if os.path.exists(tmp_path) else -1
+
+        # Never hand back a bigger file than the source.
+        if level > 0 and (compressed_size < 0 or compressed_size >= original_size):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+            if not same_file:
+                shutil.copyfile(input_path, output_path)
+        else:
+            os.replace(tmp_path, output_path)
+        return True
 
     @staticmethod
     def extract_images(input_path: str, output_dir: str) -> List[str]:

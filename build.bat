@@ -53,6 +53,19 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
+REM Build the native Qt reader with stdin/stdout available for the Tauri bridge.
+echo Building native Qt reader...
+python "qt_pdf_reader\build_reader.py"
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Qt reader build failed. Install qt_pdf_reader\requirements.txt.
+    exit /b 1
+)
+copy /Y "qt_pdf_reader\dist\qt_pdf_reader.exe" "src-tauri\resources\qt_pdf_reader.exe"
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Failed to copy Qt reader to resources!
+    exit /b 1
+)
+
 REM Step 3: Build Tauri App
 echo [Step 2/3] Building Tauri application...
 echo.
